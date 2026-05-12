@@ -1,0 +1,375 @@
+import { useState } from 'react'
+import TopBar from '../components/layout/TopBar'
+import { useOracleStore, ODDS_LABELS, EVENT_FOCUS } from '../store/oracleStore'
+import type { OddsLabel, OracleAnswer } from '../types'
+import { Trash2, Plus, X } from 'lucide-react'
+
+const ANSWER_STYLE: Record<OracleAnswer, { bg: string; text: string; glow: string }> = {
+  'Exceptional Yes': { bg: 'bg-emerald-900/40', text: 'text-emerald-300', glow: 'glow-gold' },
+  'Yes':             { bg: 'bg-emerald-950/60', text: 'text-emerald-400', glow: '' },
+  'No':              { bg: 'bg-red-950/60',     text: 'text-red-400',     glow: '' },
+  'Exceptional No':  { bg: 'bg-red-900/40',     text: 'text-red-300',     glow: 'glow-red' },
+}
+
+type Panel = 'oracle' | 'scenes' | 'threads'
+
+export default function OraclePage() {
+  const store = useOracleStore()
+  const [question, setQuestion] = useState('')
+  const [odds, setOdds] = useState<OddsLabel>('Fifty-Fifty')
+  const [activePanel, setActivePanel] = useState<Panel>('oracle')
+  const [lastRoll, setLastRoll] = useState<ReturnType<typeof store.askOracle> | null>(null)
+  const [rolling, setRolling] = useState(false)
+  const [newThread, setNewThread] = useState('')
+  const [newNpc, setNewNpc] = useState('')
+  const [newSceneTitle, setNewSceneTitle] = useState('')
+  const [newSceneSetup, setNewSceneSetup] = useState('')
+
+  const ask = async () => {
+    if (!question.trim()) return
+    setRolling(true)
+    await new Promise((r) => setTimeout(r, 400))
+    const result = store.askOracle(question.trim(), odds)
+    setLastRoll(result)
+    setRolling(false)
+    setQuestion('')
+  }
+
+  const randomEventFocus = () =>
+    EVENT_FOCUS[Math.floor(Math.random() * EVENT_FOCUS.length)]
+
+  return (
+    <div className="flex flex-col h-full">
+      <TopBar
+        title="Oracle"
+        subtitle="Mythic GME · Ask the fates"
+        right={
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-stone-500">Chaos</span>
+            <button onClick={() => store.adjustChaos(-1)} className="w-7 h-7 rounded bg-stone-800 text-stone-300 font-bold text-sm">−</button>
+            <span
+              className="text-lg font-bold w-6 text-center"
+              style={{ color: `hsl(${30 - store.chaosFactor * 3}, 80%, 60%)` }}
+            >
+              {store.chaosFactor}
+            </span>
+            <button onClick={() => store.adjustChaos(1)} className="w-7 h-7 rounded bg-stone-800 text-stone-300 font-bold text-sm">+</button>
+          </div>
+        }
+      />
+
+      {/* Panel tabs */}
+      <div className="flex-none flex border-b border-stone-800 bg-stone-950">
+        {(['oracle', 'scenes', 'threads'] as Panel[]).map((p) => (
+          <button
+            key={p}
+            onClick={() => setActivePanel(p)}
+            className={`flex-1 py-2 text-xs font-semibold uppercase tracking-wider transition-colors ${
+              activePanel === p
+                ? 'text-amber-500 border-b-2 border-amber-500'
+                : 'text-stone-500 hover:text-stone-300'
+            }`}
+          >
+            {p}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {/* ── Oracle Panel ── */}
+        {activePanel === 'oracle' && (
+          <div className="p-4 space-y-4">
+            {/* Odds selector */}
+            <div>
+              <p className="section-title">Odds</p>
+              <div className="grid grid-cols-3 gap-1.5">
+                {ODDS_LABELS.map((o) => (
+                  <button
+                    key={o}
+                    onClick={() => setOdds(o)}
+                    className={`text-xs py-2 px-1 rounded-lg border transition-colors ${
+                      odds === o
+                        ? 'bg-amber-900/40 border-amber-600 text-amber-400'
+                        : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-stone-600'
+                    }`}
+                  >
+                    {o}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Question input */}
+            <div>
+              <p className="section-title">Question</p>
+              <textarea
+                className="textarea"
+                rows={2}
+                placeholder="Is the guard sleeping?"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask() } }}
+              />
+            </div>
+
+            <button
+              onClick={ask}
+              disabled={!question.trim() || rolling}
+              className={`btn-primary w-full text-base ${rolling ? 'oracle-thinking opacity-70' : ''}`}
+            >
+              {rolling ? 'Consulting the fates…' : 'Ask Oracle'}
+            </button>
+
+            {/* Latest result */}
+            {lastRoll && (
+              <div className={`card ${ANSWER_STYLE[lastRoll.answer].bg} border-stone-600`}>
+                <p className="text-stone-400 text-sm mb-1 italic">"{lastRoll.question}"</p>
+                <p className={`text-3xl font-bold font-display ${ANSWER_STYLE[lastRoll.answer].text} ${ANSWER_STYLE[lastRoll.answer].glow}`}>
+                  {lastRoll.answer}
+                </p>
+                <div className="flex items-center gap-3 mt-2 text-xs text-stone-500">
+                  <span>Roll: {lastRoll.roll}</span>
+                  <span>·</span>
+                  <span>{lastRoll.odds}</span>
+                  {lastRoll.sceneAlt && (
+                    <span className="text-amber-400 font-semibold">⚡ Scene Alteration!</span>
+                  )}
+                  {lastRoll.randomEvent && (
+                    <span className="text-purple-400 font-semibold">
+                      🎲 Random Event: {randomEventFocus()}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* History */}
+            {store.history.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="section-title mb-0">History</p>
+                  <button
+                    onClick={store.clearHistory}
+                    className="text-xs text-stone-500 hover:text-red-400 flex items-center gap-1"
+                  >
+                    <Trash2 size={12} /> Clear
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {store.history.slice(0, 20).map((r) => {
+                    const style = ANSWER_STYLE[r.answer]
+                    return (
+                      <div key={r.id} className={`rounded-lg p-3 ${style.bg} border border-stone-700`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-stone-300 text-sm flex-1">{r.question}</p>
+                          <span className={`text-sm font-bold flex-none ${style.text}`}>{r.answer}</span>
+                        </div>
+                        <div className="flex gap-2 mt-1 text-xs text-stone-600">
+                          <span>{r.odds}</span>
+                          <span>·</span>
+                          <span>d100={r.roll}</span>
+                          <span>·</span>
+                          <span>Chaos {r.chaosFactor}</span>
+                          {r.sceneAlt && <span className="text-amber-600">⚡ Alt</span>}
+                          {r.randomEvent && <span className="text-purple-600">🎲 Event</span>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Scenes Panel ── */}
+        {activePanel === 'scenes' && (
+          <div className="p-4 space-y-4">
+            <div className="card space-y-3">
+              <p className="section-title">New Scene</p>
+              <input
+                className="input"
+                placeholder="Scene title…"
+                value={newSceneTitle}
+                onChange={(e) => setNewSceneTitle(e.target.value)}
+              />
+              <textarea
+                className="textarea"
+                rows={3}
+                placeholder="Scene setup and expected action…"
+                value={newSceneSetup}
+                onChange={(e) => setNewSceneSetup(e.target.value)}
+              />
+              <button
+                className="btn-primary w-full"
+                onClick={() => {
+                  if (!newSceneTitle.trim()) return
+                  store.addScene(newSceneTitle.trim(), newSceneSetup.trim())
+                  setNewSceneTitle('')
+                  setNewSceneSetup('')
+                }}
+              >
+                Start Scene
+              </button>
+            </div>
+
+            {store.scenes.length === 0 && (
+              <p className="text-stone-600 text-sm text-center py-8">No scenes yet. Start your adventure!</p>
+            )}
+
+            {[...store.scenes].reverse().map((scene) => (
+              <div
+                key={scene.id}
+                className={`card border ${store.currentSceneId === scene.id ? 'border-amber-700' : 'border-stone-700'}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="text-xs text-stone-500">Scene {scene.number}</span>
+                    <h3 className="text-stone-100 font-semibold">{scene.title}</h3>
+                  </div>
+                  <button
+                    onClick={() => store.setCurrentScene(scene.id)}
+                    className={`text-xs px-2 py-1 rounded ${
+                      store.currentSceneId === scene.id
+                        ? 'bg-amber-900/40 text-amber-400'
+                        : 'bg-stone-700 text-stone-400'
+                    }`}
+                  >
+                    {store.currentSceneId === scene.id ? 'Active' : 'Set Active'}
+                  </button>
+                </div>
+                {scene.setup && (
+                  <p className="text-stone-400 text-sm mt-2 italic">{scene.setup}</p>
+                )}
+                <div className="flex gap-2 mt-2 text-xs text-stone-600">
+                  <span>Chaos: {scene.chaosFactor}</span>
+                  {scene.isAlt && <span className="text-amber-600">Altered</span>}
+                  {scene.isInterrupted && <span className="text-red-600">Interrupted</span>}
+                </div>
+                {store.currentSceneId === scene.id && (
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      onClick={() => { store.adjustChaos(1); store.updateScene(scene.id, { outcome: 'Chaotic' }) }}
+                      className="btn-secondary text-xs py-1 px-2 flex-1"
+                    >
+                      Scene Chaotic (+1)
+                    </button>
+                    <button
+                      onClick={() => { store.adjustChaos(-1); store.updateScene(scene.id, { outcome: 'Controlled' }) }}
+                      className="btn-secondary text-xs py-1 px-2 flex-1"
+                    >
+                      Scene Controlled (−1)
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Threads & NPCs Panel ── */}
+        {activePanel === 'threads' && (
+          <div className="p-4 space-y-5">
+            {/* Threads */}
+            <div>
+              <p className="section-title">Active Threads</p>
+              <div className="flex gap-2 mb-3">
+                <input
+                  className="input flex-1"
+                  placeholder="New thread…"
+                  value={newThread}
+                  onChange={(e) => setNewThread(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newThread.trim()) {
+                      store.addThread(newThread.trim())
+                      setNewThread('')
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => { if (newThread.trim()) { store.addThread(newThread.trim()); setNewThread('') } }}
+                  className="btn-primary px-3"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              {store.threads.length === 0 && (
+                <p className="text-stone-600 text-sm">No active threads.</p>
+              )}
+              <div className="space-y-1.5">
+                {store.threads.map((t, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-stone-800 rounded-lg px-3 py-2">
+                    <span className="text-stone-400 text-sm flex-none">{i + 1}.</span>
+                    <span className="text-stone-200 text-sm flex-1">{t}</span>
+                    <button onClick={() => store.removeThread(t)} className="text-stone-600 hover:text-red-400">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* NPCs */}
+            <div>
+              <p className="section-title">NPCs</p>
+              <div className="flex gap-2 mb-3">
+                <input
+                  className="input flex-1"
+                  placeholder="NPC name…"
+                  value={newNpc}
+                  onChange={(e) => setNewNpc(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newNpc.trim()) {
+                      store.addNpc(newNpc.trim())
+                      setNewNpc('')
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => { if (newNpc.trim()) { store.addNpc(newNpc.trim()); setNewNpc('') } }}
+                  className="btn-primary px-3"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              {store.npcs.length === 0 && (
+                <p className="text-stone-600 text-sm">No NPCs yet.</p>
+              )}
+              <div className="space-y-1.5">
+                {store.npcs.map((n, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-stone-800 rounded-lg px-3 py-2">
+                    <span className="text-stone-400 text-sm flex-none">{i + 1}.</span>
+                    <span className="text-stone-200 text-sm flex-1">{n}</span>
+                    <button onClick={() => store.removeNpc(n)} className="text-stone-600 hover:text-red-400">
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Chaos Factor display */}
+            <div className="card text-center">
+              <p className="section-title">Current Chaos Factor</p>
+              <p
+                className="text-6xl font-bold font-display"
+                style={{ color: `hsl(${30 - store.chaosFactor * 3}, 80%, 60%)` }}
+              >
+                {store.chaosFactor}
+              </p>
+              <p className="text-stone-500 text-xs mt-1">
+                {store.chaosFactor <= 3 ? 'Things are under control' :
+                 store.chaosFactor <= 6 ? 'Things are getting complicated' :
+                 'Chaos reigns — anything can happen!'}
+              </p>
+              <div className="flex justify-center gap-4 mt-3">
+                <button onClick={() => store.adjustChaos(-1)} className="btn-secondary px-6">−1</button>
+                <button onClick={() => store.adjustChaos(1)} className="btn-secondary px-6">+1</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
