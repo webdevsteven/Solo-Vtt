@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useTablesStore } from '../store/tablesStore'
 import type { RandomTable, TableRollResult, DieType } from '../types'
+import SaveToJournal from '../components/SaveToJournal'
 import { Dices, Trash2, ChevronDown, ChevronRight, Plus, X } from 'lucide-react'
 
 const DIE_TYPES: DieType[] = [4, 6, 8, 10, 12, 20, 100]
@@ -205,6 +206,13 @@ export default function TablesPage() {
               </div>
               <p className="text-stone-100 text-sm mt-0.5 font-medium">{lastResult.result}</p>
             </div>
+            <SaveToJournal
+              entry={{
+                title: `${lastResult.tableName}: ${lastResult.result}`,
+                body: `Table: ${lastResult.tableName}\nRoll: ${lastResult.roll}\nResult: ${lastResult.result}`,
+                tag: 'note',
+              }}
+            />
             <button onClick={() => setLastResult(null)} className="text-stone-600 hover:text-stone-400 flex-none">
               <X size={16} />
             </button>
@@ -262,10 +270,18 @@ export default function TablesPage() {
             {showHistory && (
               <div className="mt-2 space-y-1.5">
                 {store.rollHistory.slice(0, 20).map((r, i) => (
-                  <div key={i} className="flex gap-3 bg-stone-800 rounded-lg px-3 py-2 text-xs">
+                  <div key={i} className="flex gap-3 bg-stone-800 rounded-lg px-3 py-2 text-xs items-center">
                     <span className="text-amber-400 font-mono font-bold min-w-[24px]">{r.roll}</span>
                     <span className="text-stone-400">{r.tableName}:</span>
                     <span className="text-stone-300 flex-1">{r.result}</span>
+                    <SaveToJournal
+                      size={13}
+                      entry={{
+                        title: `${r.tableName}: ${r.result}`,
+                        body: `Table: ${r.tableName}\nRoll: ${r.roll}\nResult: ${r.result}`,
+                        tag: 'note',
+                      }}
+                    />
                   </div>
                 ))}
                 <button onClick={store.clearHistory} className="text-xs text-stone-500 hover:text-red-400 flex items-center gap-1 mt-1">

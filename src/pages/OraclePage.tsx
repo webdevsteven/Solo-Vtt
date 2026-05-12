@@ -2,6 +2,7 @@ import { useState } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useOracleStore, ODDS_LABELS, EVENT_FOCUS } from '../store/oracleStore'
 import type { OddsLabel, OracleAnswer } from '../types'
+import SaveToJournal from '../components/SaveToJournal'
 import { Trash2, Plus, X } from 'lucide-react'
 
 const ANSWER_STYLE: Record<OracleAnswer, { bg: string; text: string; glow: string }> = {
@@ -123,7 +124,16 @@ export default function OraclePage() {
             {/* Latest result */}
             {lastRoll && (
               <div className={`card ${ANSWER_STYLE[lastRoll.answer].bg} border-stone-600`}>
-                <p className="text-stone-400 text-sm mb-1 italic">"{lastRoll.question}"</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-stone-400 text-sm mb-1 italic flex-1">"{lastRoll.question}"</p>
+                  <SaveToJournal
+                    entry={{
+                      title: `Oracle: "${lastRoll.question}"`,
+                      body: `Answer: ${lastRoll.answer}\nOdds: ${lastRoll.odds} · Roll: ${lastRoll.roll} · Chaos: ${lastRoll.chaosFactor}${lastRoll.sceneAlt ? '\n⚡ Scene Alteration!' : ''}${lastRoll.randomEvent ? '\n🎲 Random Event' : ''}`,
+                      tag: 'note',
+                    }}
+                  />
+                </div>
                 <p className={`text-3xl font-bold font-display ${ANSWER_STYLE[lastRoll.answer].text} ${ANSWER_STYLE[lastRoll.answer].glow}`}>
                   {lastRoll.answer}
                 </p>
@@ -162,7 +172,17 @@ export default function OraclePage() {
                       <div key={r.id} className={`rounded-lg p-3 ${style.bg} border border-stone-700`}>
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-stone-300 text-sm flex-1">{r.question}</p>
-                          <span className={`text-sm font-bold flex-none ${style.text}`}>{r.answer}</span>
+                          <div className="flex items-center gap-1 flex-none">
+                            <span className={`text-sm font-bold ${style.text}`}>{r.answer}</span>
+                            <SaveToJournal
+                              size={14}
+                              entry={{
+                                title: `Oracle: "${r.question}"`,
+                                body: `Answer: ${r.answer}\nOdds: ${r.odds} · Roll: ${r.roll} · Chaos: ${r.chaosFactor}`,
+                                tag: 'note',
+                              }}
+                            />
+                          </div>
                         </div>
                         <div className="flex gap-2 mt-1 text-xs text-stone-600">
                           <span>{r.odds}</span>

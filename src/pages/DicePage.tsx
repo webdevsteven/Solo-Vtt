@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useDiceStore } from '../store/diceStore'
 import type { DieType } from '../types'
+import SaveToJournal from '../components/SaveToJournal'
 import { Trash2, ChevronDown } from 'lucide-react'
 
 const DIE_TYPES: DieType[] = [4, 6, 8, 10, 12, 20, 100]
@@ -214,7 +215,16 @@ export default function DicePage() {
 
         {/* Last Result */}
         {lastResult && (
-          <div ref={resultRef} className="card border-amber-800/50 text-center py-5">
+          <div ref={resultRef} className="card border-amber-800/50 text-center py-5 relative">
+            <div className="absolute top-3 right-3">
+              <SaveToJournal
+                entry={{
+                  title: `Rolled ${lastResult.dice.map((d) => `${d.count}d${d.type}`).join('+')}${lastResult.modifier ? (lastResult.modifier > 0 ? `+${lastResult.modifier}` : lastResult.modifier) : ''} = ${lastResult.total}`,
+                  body: `Results: [${lastResult.results.join(', ')}]${lastResult.modifier ? ` + modifier ${lastResult.modifier}` : ''}\nTotal: ${lastResult.total}`,
+                  tag: 'note',
+                }}
+              />
+            </div>
             <p className="section-title">Last Roll</p>
             {lastResult.label && (
               <p className="text-stone-400 text-sm mb-1">{lastResult.label}</p>
@@ -269,6 +279,14 @@ export default function DicePage() {
                       {r.modifier ? (r.modifier > 0 ? `+${r.modifier}` : r.modifier) : ''}
                     </span>
                     <span className="text-stone-600 text-xs">[{r.results.join(', ')}]</span>
+                    <SaveToJournal
+                      size={13}
+                      entry={{
+                        title: `Rolled ${r.dice.map((d) => `${d.count}d${d.type}`).join('+')} = ${r.total}`,
+                        body: `Results: [${r.results.join(', ')}]\nTotal: ${r.total}`,
+                        tag: 'note',
+                      }}
+                    />
                   </div>
                 ))}
                 <button onClick={store.clearHistory} className="text-xs text-stone-500 hover:text-red-400 flex items-center gap-1 mt-2">
