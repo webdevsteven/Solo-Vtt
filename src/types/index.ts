@@ -80,6 +80,17 @@ export interface Attribute {
   max?: number
 }
 
+export type FieldType = 'number' | 'resource' | 'text' | 'dots' | 'track'
+
+export interface CharacterField {
+  id: string
+  name: string
+  type: FieldType
+  value: number   // number:score | resource:current | dots:rating | track:bitmask
+  max: number     // number:max(0=none) | resource:max | dots:count | track:boxes
+  text: string    // text type value
+}
+
 export interface Skill {
   id: string
   name: string
@@ -101,9 +112,10 @@ export interface Character {
   name: string
   concept: string
   system: string
-  hp: number
-  maxHp: number
-  attributes: Attribute[]
+  hp?: number       // legacy, kept for migration
+  maxHp?: number    // legacy, kept for migration
+  attributes?: Attribute[]  // legacy, kept for migration
+  fields: CharacterField[]
   skills: Skill[]
   inventory: InventoryItem[]
   notes: string

@@ -130,20 +130,19 @@ export default function WandererSetup({ onClose }: Props) {
     )!
     const id = newChar.id
 
-    // Set concept, system, HP
+    // Set concept and system
     charStore.updateCharacter(id, {
       concept: concept.trim() || 'A lone wanderer without roots',
       system: 'Wanderer',
-      hp,
-      maxHp: hp,
     })
 
-    // Remove default D&D attributes, add Wanderer ones
-    newChar.attributes.forEach((a) => charStore.removeAttribute(id, a.id))
-    charStore.addAttribute(id, { id: 'brawn', name: 'BRAWN', value: attrs.brawn, max: 6 })
-    charStore.addAttribute(id, { id: 'edge',  name: 'EDGE',  value: attrs.edge,  max: 6 })
-    charStore.addAttribute(id, { id: 'wits',  name: 'WITS',  value: attrs.wits,  max: 6 })
-    charStore.addAttribute(id, { id: 'grit',  name: 'GRIT',  value: attrs.grit,  max: 6 })
+    // Replace default fields with Wanderer fields
+    ;(newChar.fields ?? []).forEach((f) => charStore.removeField(id, f.id))
+    charStore.addField(id, { id: 'hp',    name: 'HP',    type: 'resource', value: hp,          max: hp, text: '' })
+    charStore.addField(id, { id: 'brawn', name: 'BRAWN', type: 'number',   value: attrs.brawn, max: 6,  text: '' })
+    charStore.addField(id, { id: 'edge',  name: 'EDGE',  type: 'number',   value: attrs.edge,  max: 6,  text: '' })
+    charStore.addField(id, { id: 'wits',  name: 'WITS',  type: 'number',   value: attrs.wits,  max: 6,  text: '' })
+    charStore.addField(id, { id: 'grit',  name: 'GRIT',  type: 'number',   value: attrs.grit,  max: 6,  text: '' })
 
     // Add skills
     selectedSkills.forEach((sk) =>
