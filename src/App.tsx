@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import BottomNav from './components/layout/BottomNav'
 import BackupRestore from './components/BackupRestore'
+import WandererSetup from './components/WandererSetup'
 import MapPage from './pages/MapPage'
 import OraclePage from './pages/OraclePage'
 import DicePage from './pages/DicePage'
@@ -12,6 +13,7 @@ import { Settings } from 'lucide-react'
 
 export default function App() {
   const [showBackup, setShowBackup] = useState(false)
+  const [showWanderer, setShowWanderer] = useState(false)
 
   return (
     <BrowserRouter>
@@ -41,7 +43,14 @@ export default function App() {
         </button>
 
         {showBackup && (
-          <BackupRestore onClose={() => setShowBackup(false)} />
+          <BackupRestore
+            onClose={() => setShowBackup(false)}
+            onNewWandererGame={() => setShowWanderer(true)}
+          />
+        )}
+
+        {showWanderer && (
+          <WandererSetup onClose={() => setShowWanderer(false)} />
         )}
       </div>
     </BrowserRouter>

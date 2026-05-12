@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Download, Upload, X, AlertTriangle } from 'lucide-react'
+import { Download, Upload, X, AlertTriangle, Swords } from 'lucide-react'
 
 const STORE_KEYS = [
   'solo-vtt-maps',
@@ -18,9 +18,10 @@ function today() {
 
 interface Props {
   onClose: () => void
+  onNewWandererGame: () => void
 }
 
-export default function BackupRestore({ onClose }: Props) {
+export default function BackupRestore({ onClose, onNewWandererGame }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [confirmRestore, setConfirmRestore] = useState(false)
   const [pendingData, setPendingData] = useState<Record<string, string> | null>(null)
@@ -98,6 +99,20 @@ export default function BackupRestore({ onClose }: Props) {
           <h2 className="text-stone-100 font-bold text-base">Data Backup & Restore</h2>
           <button onClick={onClose} className="text-stone-500 hover:text-stone-300">
             <X size={20} />
+          </button>
+        </div>
+
+        {/* New Wanderer Game */}
+        <div className="card space-y-2 border-amber-800/40">
+          <p className="text-stone-200 text-sm font-semibold">Start a New Game</p>
+          <p className="text-stone-500 text-xs">
+            Create a new WANDERER character and add all rules, tables, and references automatically.
+          </p>
+          <button
+            onClick={() => { onClose(); onNewWandererGame() }}
+            className="btn-primary w-full flex items-center justify-center gap-2 bg-amber-900/60 hover:bg-amber-800/70 border-amber-700/60"
+          >
+            <Swords size={16} /> New Wanderer Game
           </button>
         </div>
 
