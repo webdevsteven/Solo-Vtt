@@ -91,10 +91,15 @@ export interface CharacterField {
   text: string    // text type value
 }
 
+export type SkillType = 'dots' | 'number' | 'checkbox'
+
 export interface Skill {
   id: string
   name: string
-  rank: number   // 0-5
+  rank: number          // dots:0-max | number:value | checkbox:0 or 1
+  skillType?: SkillType // default 'dots'
+  max?: number          // dots:max dots | number:max (0=none) | checkbox:ignored
+  note?: string
   attribute?: string
 }
 
@@ -105,6 +110,7 @@ export interface InventoryItem {
   weight?: number
   note?: string
   equipped?: boolean
+  category?: string
 }
 
 export interface Character {
