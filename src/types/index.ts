@@ -26,6 +26,8 @@ export interface MapState {
   fogCells: string[]   // "col,row" strings
   fogEnabled: boolean
   backgroundUrl?: string
+  bgColor?: string
+  paintedCells?: Record<string, string>  // "col,row" → hex color
 }
 
 // ── Oracle ────────────────────────────────────────────────────────────────────

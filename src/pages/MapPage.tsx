@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useMapStore } from '../store/mapStore'
 import type { MapToken, TokenColor, TokenShape } from '../types'
-import { Plus, Trash2, Layers, Eye, EyeOff } from 'lucide-react'
+import { Plus, Trash2, Layers, Eye, EyeOff, Pencil } from 'lucide-react'
 
 const TOKEN_COLORS: Record<TokenColor, string> = {
   amber:  '#f59e0b',
@@ -15,6 +15,32 @@ const TOKEN_COLORS: Record<TokenColor, string> = {
 }
 
 const SHAPES: TokenShape[] = ['circle', 'square', 'diamond']
+
+const PAINT_COLORS: { label: string; color: string | null }[] = [
+  { label: 'Wall',  color: '#0a0a0a' },
+  { label: 'Stone', color: '#57534e' },
+  { label: 'Floor', color: '#e7e5e4' },
+  { label: 'Grass', color: '#16a34a' },
+  { label: 'Water', color: '#1d4ed8' },
+  { label: 'Wood',  color: '#7c2d12' },
+  { label: 'Sand',  color: '#d97706' },
+  { label: 'Erase', color: null },
+]
+
+const BG_PRESETS = [
+  { label: 'Black', color: '#000000' },
+  { label: 'Stone', color: '#1c1917' },
+  { label: 'Light', color: '#f5f5f4' },
+  { label: 'Green', color: '#14532d' },
+]
+
+function hexLuminance(hex: string): number {
+  const c = hex.replace('#', '')
+  const r = parseInt(c.slice(0, 2), 16)
+  const g = parseInt(c.slice(2, 4), 16)
+  const b = parseInt(c.slice(4, 6), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000
+}
 
 function drawToken(
   ctx: CanvasRenderingContext2D,
@@ -54,7 +80,6 @@ function drawToken(
   ctx.fill()
   ctx.stroke()
 
-  // Label
   ctx.shadowBlur = 0
   ctx.fillStyle = '#fff'
   ctx.font = `bold ${Math.floor(size * 0.32)}px system-ui`
@@ -84,12 +109,16 @@ export default function MapPage() {
   const [showFogTools, setShowFogTools] = useState(false)
   const [fogMode, setFogMode] = useState(false)
   const [showMapList, setShowMapList] = useState(false)
+  const [showDrawTools, setShowDrawTools] = useState(false)
+  const [paintMode, setPaintMode] = useState(false)
+  const [paintColor, setPaintColor] = useState<string | null>('#57534e')
 
   // Camera pan/zoom
   const [camera, setCamera] = useState({ x: 0, y: 0, zoom: 1 })
   const dragRef = useRef<{ startX: number; startY: number; camX: number; camY: number; isDragging: boolean } | null>(null)
   const tokenDragRef = useRef<{ tokenId: string; startX: number; startY: number; origX: number; origY: number } | null>(null)
   const lastTouchRef = useRef<{ x: number; y: number; dist?: number } | null>(null)
+  const isPaintingRef = useRef(false)
 
   const CELL = map.cellSize * camera.zoom
 
@@ -123,11 +152,22 @@ export default function MapPage() {
     ctx.scale(camera.zoom, camera.zoom)
 
     // Background
-    ctx.fillStyle = '#1c1917'
+    const bgColor = map.bgColor ?? '#1c1917'
+    ctx.fillStyle = bgColor
     ctx.fillRect(0, 0, map.gridCols * map.cellSize, map.gridRows * map.cellSize)
 
-    // Grid lines
-    ctx.strokeStyle = '#44403c'
+    // Painted cells (below grid lines, fog, tokens)
+    if (map.paintedCells) {
+      Object.entries(map.paintedCells).forEach(([cell, color]) => {
+        const [c, r] = cell.split(',').map(Number)
+        ctx.fillStyle = color
+        ctx.fillRect(c * map.cellSize, r * map.cellSize, map.cellSize, map.cellSize)
+      })
+    }
+
+    // Grid lines — adaptive to background brightness
+    const lum = hexLuminance(bgColor)
+    ctx.strokeStyle = lum > 160 ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.10)'
     ctx.lineWidth = 0.5
     for (let c = 0; c <= map.gridCols; c++) {
       ctx.beginPath()
@@ -164,7 +204,6 @@ export default function MapPage() {
         token.id === selectedTokenId,
         token.isPC ?? false,
       )
-      // HP bar
       if (token.hp !== undefined && token.maxHp !== undefined && token.maxHp > 0) {
         const bw = map.cellSize - 6
         const bh = 4
@@ -182,7 +221,6 @@ export default function MapPage() {
 
   useEffect(() => { draw() }, [draw])
 
-  // Resize observer
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
@@ -191,20 +229,32 @@ export default function MapPage() {
     return () => ro.disconnect()
   }, [draw])
 
-  // ── Pointer events ──────────────────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   const getTokenAtGrid = (gx: number, gy: number) =>
     map.tokens.find((t) => t.x === gx && t.y === gy)
 
+  const paintCell = (gx: number, gy: number) => {
+    if (gx < 0 || gx >= map.gridCols || gy < 0 || gy >= map.gridRows) return
+    store.setPaintCell(map.id, `${gx},${gy}`, paintColor)
+  }
+
+  // ── Pointer events ──────────────────────────────────────────────────────────
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === 'touch') return // handled by touch events
+    if (e.pointerType === 'touch') return
     const { gx, gy } = canvasToGrid(e.clientX, e.clientY)
-    const token = getTokenAtGrid(gx, gy)
+
+    if (paintMode) {
+      paintCell(gx, gy)
+      isPaintingRef.current = true
+      return
+    }
 
     if (fogMode) {
       store.toggleFogCell(map.id, `${gx},${gy}`)
       return
     }
 
+    const token = getTokenAtGrid(gx, gy)
     if (token) {
       setSelectedTokenId(token.id)
       tokenDragRef.current = { tokenId: token.id, startX: e.clientX, startY: e.clientY, origX: token.x, origY: token.y }
@@ -216,6 +266,13 @@ export default function MapPage() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (e.pointerType === 'touch') return
+
+    if (paintMode && isPaintingRef.current) {
+      const { gx, gy } = canvasToGrid(e.clientX, e.clientY)
+      paintCell(gx, gy)
+      return
+    }
+
     if (tokenDragRef.current) {
       const dx = e.clientX - tokenDragRef.current.startX
       const dy = e.clientY - tokenDragRef.current.startY
@@ -234,6 +291,12 @@ export default function MapPage() {
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (e.pointerType === 'touch') return
+
+    if (paintMode) {
+      isPaintingRef.current = false
+      return
+    }
+
     if (tokenDragRef.current) {
       tokenDragRef.current = null
       return
@@ -248,7 +311,7 @@ export default function MapPage() {
     dragRef.current = null
   }
 
-  // Touch events for mobile
+  // ── Touch events ─────────────────────────────────────────────────────────────
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const dx = e.touches[1].clientX - e.touches[0].clientX
@@ -262,7 +325,13 @@ export default function MapPage() {
     }
     const t = e.touches[0]
     const { gx, gy } = canvasToGrid(t.clientX, t.clientY)
-    const token = getTokenAtGrid(gx, gy)
+
+    if (paintMode) {
+      paintCell(gx, gy)
+      isPaintingRef.current = true
+      lastTouchRef.current = null
+      return
+    }
 
     if (fogMode) {
       store.toggleFogCell(map.id, `${gx},${gy}`)
@@ -270,6 +339,7 @@ export default function MapPage() {
       return
     }
 
+    const token = getTokenAtGrid(gx, gy)
     if (token) {
       setSelectedTokenId(token.id)
       tokenDragRef.current = { tokenId: token.id, startX: t.clientX, startY: t.clientY, origX: token.x, origY: token.y }
@@ -296,6 +366,13 @@ export default function MapPage() {
     }
     if (e.touches.length === 1) {
       const t = e.touches[0]
+
+      if (paintMode && isPaintingRef.current) {
+        const { gx, gy } = canvasToGrid(t.clientX, t.clientY)
+        paintCell(gx, gy)
+        return
+      }
+
       if (tokenDragRef.current) {
         const dx = t.clientX - tokenDragRef.current.startX
         const dy = t.clientY - tokenDragRef.current.startY
@@ -314,6 +391,11 @@ export default function MapPage() {
   }
 
   const handleTouchEnd = (e: React.TouchEvent) => {
+    if (paintMode) {
+      isPaintingRef.current = false
+      return
+    }
+
     if (tokenDragRef.current) {
       tokenDragRef.current = null
       return
@@ -372,14 +454,20 @@ export default function MapPage() {
         right={
           <div className="flex gap-2">
             <button
-              onClick={() => setShowFogTools((s) => !s)}
-              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-200"
+              onClick={() => { setShowDrawTools((s) => !s); setShowFogTools(false); setShowMapList(false) }}
+              className={`p-1.5 rounded-lg ${showDrawTools ? 'text-amber-400' : 'text-stone-400 hover:text-stone-200'}`}
+            >
+              <Pencil size={18} />
+            </button>
+            <button
+              onClick={() => { setShowFogTools((s) => !s); setShowDrawTools(false); setShowMapList(false) }}
+              className={`p-1.5 rounded-lg ${showFogTools ? 'text-amber-400' : 'text-stone-400 hover:text-stone-200'}`}
             >
               {map.fogEnabled ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
             <button
-              onClick={() => setShowMapList((s) => !s)}
-              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-200"
+              onClick={() => { setShowMapList((s) => !s); setShowDrawTools(false); setShowFogTools(false) }}
+              className={`p-1.5 rounded-lg ${showMapList ? 'text-amber-400' : 'text-stone-400 hover:text-stone-200'}`}
             >
               <Layers size={18} />
             </button>
@@ -414,6 +502,78 @@ export default function MapPage() {
           >
             <Plus size={14} /> New Map
           </button>
+        </div>
+      )}
+
+      {/* Draw toolbar */}
+      {showDrawTools && (
+        <div className="bg-stone-900 border-b border-stone-700 p-3 space-y-3">
+          <div>
+            <p className="section-title mb-2">Background</p>
+            <div className="flex gap-2">
+              {BG_PRESETS.map(({ label, color }) => (
+                <button
+                  key={label}
+                  onClick={() => store.updateMap(map.id, { bgColor: color })}
+                  className={`flex-1 py-1.5 text-xs rounded-lg border font-medium flex items-center justify-center gap-1.5 ${
+                    (map.bgColor ?? '#1c1917') === color
+                      ? 'border-amber-500 text-amber-400 bg-amber-900/20'
+                      : 'border-stone-700 text-stone-400 bg-stone-800'
+                  }`}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full border border-stone-600 inline-block flex-shrink-0"
+                    style={{ backgroundColor: color }}
+                  />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="section-title">Paint Cells</p>
+              <button
+                onClick={() => setPaintMode((p) => !p)}
+                className={`text-xs px-2 py-0.5 rounded border ${
+                  paintMode
+                    ? 'bg-amber-900/50 border-amber-600 text-amber-400'
+                    : 'border-stone-700 text-stone-500'
+                }`}
+              >
+                {paintMode ? 'On' : 'Off'}
+              </button>
+              <button
+                onClick={() => store.clearPaintedCells(map.id)}
+                className="btn-secondary text-xs py-1 px-2 ml-auto"
+              >
+                Clear All
+              </button>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {PAINT_COLORS.map(({ label, color }) => (
+                <button
+                  key={label}
+                  title={label}
+                  onClick={() => { setPaintColor(color); setPaintMode(true) }}
+                  className="w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-transform"
+                  style={{
+                    backgroundColor: color ?? '#292524',
+                    borderColor: paintColor === color && paintMode ? '#f59e0b' : '#44403c',
+                    transform: paintColor === color && paintMode ? 'scale(1.15)' : 'scale(1)',
+                    ...(color === null && {
+                      background: 'repeating-linear-gradient(-45deg, #292524, #292524 3px, #44403c 3px, #44403c 6px)',
+                    }),
+                  }}
+                >
+                  {color === null && <span className="text-red-400 text-xs font-bold leading-none">✕</span>}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button onClick={centerMap} className="btn-secondary text-sm py-1.5 px-3">Center Map</button>
         </div>
       )}
 
@@ -453,12 +613,26 @@ export default function MapPage() {
       >
         <canvas ref={canvasRef} className="absolute inset-0" />
 
-        {/* Zoom indicator */}
         <div className="absolute bottom-3 left-3 bg-stone-900/80 text-stone-400 text-xs px-2 py-1 rounded">
           {Math.round(camera.zoom * 100)}%
         </div>
 
-        {fogMode && (
+        {paintMode && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-stone-900/90 text-stone-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+            <span
+              className="w-3 h-3 rounded inline-block border border-stone-500"
+              style={{
+                backgroundColor: paintColor ?? 'transparent',
+                ...(paintColor === null && {
+                  background: 'repeating-linear-gradient(-45deg, #292524, #292524 2px, #44403c 2px, #44403c 4px)',
+                }),
+              }}
+            />
+            {paintColor === null ? 'Tap cells to erase' : 'Tap cells to paint'}
+          </div>
+        )}
+
+        {fogMode && !paintMode && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-900/90 text-amber-300 text-xs px-3 py-1.5 rounded-full">
             Tap cells to toggle fog
           </div>

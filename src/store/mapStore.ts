@@ -28,6 +28,8 @@ interface MapStore {
   toggleFogCell: (mapId: string, cell: string) => void
   clearFog: (mapId: string) => void
   fillFog: (mapId: string) => void
+  setPaintCell: (mapId: string, cell: string, color: string | null) => void
+  clearPaintedCells: (mapId: string) => void
 }
 
 export const useMapStore = create<MapStore>()(
@@ -46,7 +48,7 @@ export const useMapStore = create<MapStore>()(
         set((s) => ({
           maps: [
             ...s.maps,
-            { ...DEFAULT_MAP, id, name, tokens: [], fogCells: [] },
+            { ...DEFAULT_MAP, id, name, tokens: [], fogCells: [], paintedCells: {} },
           ],
           activeMapId: id,
         }))
@@ -143,6 +145,27 @@ export const useMapStore = create<MapStore>()(
                 cells.push(`${c},${r}`)
             return { ...m, fogCells: cells }
           }),
+        })),
+
+      setPaintCell: (mapId, cell, color) =>
+        set((s) => ({
+          maps: s.maps.map((m) => {
+            if (m.id !== mapId) return m
+            const paintedCells = { ...(m.paintedCells ?? {}) }
+            if (color === null) {
+              delete paintedCells[cell]
+            } else {
+              paintedCells[cell] = color
+            }
+            return { ...m, paintedCells }
+          }),
+        })),
+
+      clearPaintedCells: (mapId) =>
+        set((s) => ({
+          maps: s.maps.map((m) =>
+            m.id === mapId ? { ...m, paintedCells: {} } : m,
+          ),
         })),
     }),
     { name: 'solo-vtt-maps' },
