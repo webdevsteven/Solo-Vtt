@@ -54,6 +54,7 @@ interface OracleStore {
   clearHistory: () => void
   addScene: (title: string, setup: string) => Scene
   updateScene: (id: string, partial: Partial<Scene>) => void
+  deleteScene: (id: string) => void
   setCurrentScene: (id: string | null) => void
   addThread: (t: string) => void
   removeThread: (t: string) => void
@@ -135,6 +136,16 @@ export const useOracleStore = create<OracleStore>()(
         set((s) => ({
           scenes: s.scenes.map((sc) => (sc.id === id ? { ...sc, ...partial } : sc)),
         })),
+
+      deleteScene: (id) =>
+        set((s) => {
+          const scenes = s.scenes.filter((sc) => sc.id !== id)
+          const currentSceneId =
+            s.currentSceneId === id
+              ? (scenes[scenes.length - 1]?.id ?? null)
+              : s.currentSceneId
+          return { scenes, currentSceneId }
+        }),
 
       setCurrentScene: (id) => set({ currentSceneId: id }),
 

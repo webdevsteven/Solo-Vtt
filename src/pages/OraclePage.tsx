@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useOracleStore, ODDS_LABELS, EVENT_FOCUS } from '../store/oracleStore'
-import type { OddsLabel, OracleAnswer } from '../types'
+import type { OddsLabel, OracleAnswer, Scene } from '../types'
 import SaveToJournal from '../components/SaveToJournal'
-import { Trash2, Plus, X } from 'lucide-react'
+import { Trash2, Plus, X, ChevronDown, ChevronRight, Edit2, Check } from 'lucide-react'
 
 const ANSWER_STYLE: Record<OracleAnswer, { bg: string; text: string; glow: string }> = {
   'Exceptional Yes': { bg: 'bg-emerald-900/40', text: 'text-emerald-300', glow: 'glow-gold' },
@@ -13,6 +13,152 @@ const ANSWER_STYLE: Record<OracleAnswer, { bg: string; text: string; glow: strin
 }
 
 type Panel = 'oracle' | 'scenes' | 'threads'
+
+function SceneCard({ scene, isActive }: { scene: Scene; isActive: boolean }) {
+  const store = useOracleStore()
+  const [expanded, setExpanded] = useState(isActive)
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleInput, setTitleInput] = useState(scene.title)
+  const [editingSetup, setEditingSetup] = useState(false)
+  const [setupInput, setSetupInput] = useState(scene.setup)
+
+  const saveTitle = () => {
+    store.updateScene(scene.id, { title: titleInput.trim() || scene.title })
+    setEditingTitle(false)
+  }
+
+  const saveSetup = () => {
+    store.updateScene(scene.id, { setup: setupInput })
+    setEditingSetup(false)
+  }
+
+  return (
+    <div className={`card border ${isActive ? 'border-amber-700/60 bg-stone-800/60' : 'border-stone-700'}`}>
+      {/* Header */}
+      <div className="flex items-center gap-2 min-w-0">
+        <button onClick={() => setExpanded((s) => !s)} className="flex-none text-stone-600">
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+        <span className="text-xs text-stone-600 flex-none font-mono">#{scene.number}</span>
+
+        {editingTitle ? (
+          <input
+            className="input flex-1 text-sm py-1"
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveTitle() }}
+            autoFocus
+          />
+        ) : (
+          <span
+            className={`flex-1 font-semibold text-sm truncate ${isActive ? 'text-amber-200' : 'text-stone-100'}`}
+            onClick={() => setExpanded((s) => !s)}
+          >
+            {scene.title}
+          </span>
+        )}
+
+        {isActive && !editingTitle && (
+          <span className="text-xs bg-amber-900/60 text-amber-400 px-1.5 py-0.5 rounded flex-none">Active</span>
+        )}
+
+        {editingTitle ? (
+          <button onClick={saveTitle} className="p-1 text-amber-500 flex-none"><Check size={14} /></button>
+        ) : (
+          <button onClick={() => { setTitleInput(scene.title); setEditingTitle(true) }}
+            className="p-1 text-stone-600 hover:text-stone-300 flex-none touch-manipulation"><Edit2 size={13} /></button>
+        )}
+        <button
+          onClick={() => store.deleteScene(scene.id)}
+          className="p-1 text-stone-600 hover:text-red-400 flex-none touch-manipulation"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 space-y-3">
+          {/* Setup */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-stone-600 uppercase tracking-wide">Setup</span>
+              {!editingSetup && (
+                <button onClick={() => { setSetupInput(scene.setup); setEditingSetup(true) }}
+                  className="text-xs text-stone-600 hover:text-stone-400 flex items-center gap-0.5 touch-manipulation">
+                  <Edit2 size={11} /> Edit
+                </button>
+              )}
+            </div>
+            {editingSetup ? (
+              <div className="space-y-2">
+                <textarea
+                  className="textarea text-sm"
+                  rows={2}
+                  value={setupInput}
+                  onChange={(e) => setSetupInput(e.target.value)}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => setEditingSetup(false)} className="btn-secondary text-xs py-1 flex-1">Cancel</button>
+                  <button onClick={saveSetup} className="btn-primary text-xs py-1 flex-1">Save</button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-stone-400 text-sm italic">
+                {scene.setup || <span className="text-stone-600">No setup written.</span>}
+              </p>
+            )}
+          </div>
+
+          {/* Notes / Outcome */}
+          <div>
+            <span className="text-xs text-stone-600 uppercase tracking-wide block mb-1">Notes</span>
+            <textarea
+              className="textarea text-sm"
+              rows={3}
+              placeholder="What happened… record outcomes, twists, discoveries."
+              value={scene.outcome ?? ''}
+              onChange={(e) => store.updateScene(scene.id, { outcome: e.target.value })}
+            />
+          </div>
+
+          {/* Footer */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-stone-600">Chaos {scene.chaosFactor}</span>
+            {scene.isAlt && <span className="text-xs text-amber-600 font-medium">⚡ Altered</span>}
+            {scene.isInterrupted && <span className="text-xs text-red-500 font-medium">⚡ Interrupted</span>}
+            <div className="flex-1" />
+            {!isActive && (
+              <button
+                onClick={() => store.setCurrentScene(scene.id)}
+                className="text-xs text-stone-500 hover:text-amber-400 border border-stone-700 px-2 py-1 rounded touch-manipulation"
+              >
+                Set Active
+              </button>
+            )}
+          </div>
+
+          {isActive && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => store.adjustChaos(1)}
+                className="btn-secondary text-xs py-1.5 flex-1"
+              >
+                Chaos +1
+              </button>
+              <button
+                onClick={() => store.adjustChaos(-1)}
+                className="btn-secondary text-xs py-1.5 flex-1"
+              >
+                Chaos −1
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function OraclePage() {
   const store = useOracleStore()
@@ -204,24 +350,29 @@ export default function OraclePage() {
 
         {/* ── Scenes Panel ── */}
         {activePanel === 'scenes' && (
-          <div className="p-4 space-y-4">
-            <div className="card space-y-3">
-              <p className="section-title">New Scene</p>
+          <div className="p-4 space-y-3">
+            {/* New scene form */}
+            <div className="card space-y-2.5">
               <input
                 className="input"
                 placeholder="Scene title…"
                 value={newSceneTitle}
                 onChange={(e) => setNewSceneTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && newSceneTitle.trim()) {
+                  store.addScene(newSceneTitle.trim(), newSceneSetup.trim())
+                  setNewSceneTitle(''); setNewSceneSetup('')
+                }}}
               />
               <textarea
-                className="textarea"
-                rows={3}
-                placeholder="Scene setup and expected action…"
+                className="textarea text-sm"
+                rows={2}
+                placeholder="Setup / what you expect to happen… (optional)"
                 value={newSceneSetup}
                 onChange={(e) => setNewSceneSetup(e.target.value)}
               />
               <button
                 className="btn-primary w-full"
+                disabled={!newSceneTitle.trim()}
                 onClick={() => {
                   if (!newSceneTitle.trim()) return
                   store.addScene(newSceneTitle.trim(), newSceneSetup.trim())
@@ -229,7 +380,7 @@ export default function OraclePage() {
                   setNewSceneSetup('')
                 }}
               >
-                Start Scene
+                Begin Scene
               </button>
             </div>
 
@@ -238,51 +389,11 @@ export default function OraclePage() {
             )}
 
             {[...store.scenes].reverse().map((scene) => (
-              <div
+              <SceneCard
                 key={scene.id}
-                className={`card border ${store.currentSceneId === scene.id ? 'border-amber-700' : 'border-stone-700'}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="text-xs text-stone-500">Scene {scene.number}</span>
-                    <h3 className="text-stone-100 font-semibold">{scene.title}</h3>
-                  </div>
-                  <button
-                    onClick={() => store.setCurrentScene(scene.id)}
-                    className={`text-xs px-2 py-1 rounded ${
-                      store.currentSceneId === scene.id
-                        ? 'bg-amber-900/40 text-amber-400'
-                        : 'bg-stone-700 text-stone-400'
-                    }`}
-                  >
-                    {store.currentSceneId === scene.id ? 'Active' : 'Set Active'}
-                  </button>
-                </div>
-                {scene.setup && (
-                  <p className="text-stone-400 text-sm mt-2 italic">{scene.setup}</p>
-                )}
-                <div className="flex gap-2 mt-2 text-xs text-stone-600">
-                  <span>Chaos: {scene.chaosFactor}</span>
-                  {scene.isAlt && <span className="text-amber-600">Altered</span>}
-                  {scene.isInterrupted && <span className="text-red-600">Interrupted</span>}
-                </div>
-                {store.currentSceneId === scene.id && (
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() => { store.adjustChaos(1); store.updateScene(scene.id, { outcome: 'Chaotic' }) }}
-                      className="btn-secondary text-xs py-1 px-2 flex-1"
-                    >
-                      Scene Chaotic (+1)
-                    </button>
-                    <button
-                      onClick={() => { store.adjustChaos(-1); store.updateScene(scene.id, { outcome: 'Controlled' }) }}
-                      className="btn-secondary text-xs py-1 px-2 flex-1"
-                    >
-                      Scene Controlled (−1)
-                    </button>
-                  </div>
-                )}
-              </div>
+                scene={scene}
+                isActive={store.currentSceneId === scene.id}
+              />
             ))}
           </div>
         )}
