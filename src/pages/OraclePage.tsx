@@ -166,6 +166,7 @@ export default function OraclePage() {
   const [odds, setOdds] = useState<OddsLabel>('Fifty-Fifty')
   const [activePanel, setActivePanel] = useState<Panel>('oracle')
   const [lastRoll, setLastRoll] = useState<ReturnType<typeof store.askOracle> | null>(null)
+  const [lastRollFocus, setLastRollFocus] = useState<string | null>(null)
   const [rolling, setRolling] = useState(false)
   const [newThread, setNewThread] = useState('')
   const [newNpc, setNewNpc] = useState('')
@@ -178,6 +179,7 @@ export default function OraclePage() {
     await new Promise((r) => setTimeout(r, 400))
     const result = store.askOracle(question.trim(), odds)
     setLastRoll(result)
+    setLastRollFocus(result.randomEvent ? randomEventFocus() : null)
     setRolling(false)
     setQuestion('')
   }
@@ -229,12 +231,12 @@ export default function OraclePage() {
             {/* Odds selector */}
             <div>
               <p className="section-title">Odds</p>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {ODDS_LABELS.map((o) => (
                   <button
                     key={o}
                     onClick={() => setOdds(o)}
-                    className={`text-xs py-2 px-1 rounded-lg border transition-colors ${
+                    className={`text-xs py-1.5 px-2.5 rounded-lg border transition-colors flex-none touch-manipulation ${
                       odds === o
                         ? 'bg-amber-900/40 border-amber-600 text-amber-400'
                         : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-stone-600'
@@ -251,7 +253,7 @@ export default function OraclePage() {
               <p className="section-title">Question</p>
               <textarea
                 className="textarea"
-                rows={2}
+                rows={3}
                 placeholder="Is the guard sleeping?"
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
@@ -292,7 +294,7 @@ export default function OraclePage() {
                   )}
                   {lastRoll.randomEvent && (
                     <span className="text-purple-400 font-semibold">
-                      🎲 Random Event: {randomEventFocus()}
+                      🎲 {lastRollFocus}
                     </span>
                   )}
                 </div>

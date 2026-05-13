@@ -52,10 +52,10 @@ function DieShape({ sides, size, color }: { sides: DieType; size: number; color:
 }
 
 const PRESETS = [
-  { label: '1d20', dice: [{ type: 20 as DieType, count: 1 }], mod: 0 },
-  { label: '2d6', dice: [{ type: 6 as DieType, count: 2 }], mod: 0 },
+  { label: '1d20',  dice: [{ type: 20  as DieType, count: 1 }], mod: 0 },
+  { label: '2d6',   dice: [{ type: 6   as DieType, count: 2 }], mod: 0 },
   { label: '1d100', dice: [{ type: 100 as DieType, count: 1 }], mod: 0 },
-  { label: '4d6 drop', dice: [{ type: 6 as DieType, count: 4 }], mod: 0 },
+  { label: '4d6',   dice: [{ type: 6   as DieType, count: 4 }], mod: 0 },
 ]
 
 export default function DicePage() {
@@ -74,6 +74,7 @@ export default function DicePage() {
     if (store.pool.length === 0) return
     setRolling(true)
     setRollingDie('rolling')
+    if (navigator.vibrate) navigator.vibrate([40, 20, 60])
     await new Promise((r) => setTimeout(r, 500))
     store.roll()
     setRolling(false)
@@ -82,6 +83,7 @@ export default function DicePage() {
 
   const quickRoll = async (type: DieType) => {
     setRollingDie(`${type}`)
+    if (navigator.vibrate) navigator.vibrate(50)
     await new Promise((r) => setTimeout(r, 300))
     store.quickRoll(type)
     setRollingDie(null)
@@ -201,6 +203,7 @@ export default function DicePage() {
                   })
                   store.setModifier(p.mod)
                   setRolling(true)
+                  if (navigator.vibrate) navigator.vibrate([40, 20, 60])
                   await new Promise((r) => setTimeout(r, 400))
                   store.roll(p.label)
                   setRolling(false)
@@ -232,6 +235,12 @@ export default function DicePage() {
             <p className="text-6xl font-bold font-display text-amber-400 glow-gold">
               {lastResult.total}
             </p>
+            {lastResult.dice.length === 1 && lastResult.dice[0].count === 1 && lastResult.dice[0].type === 20 && lastResult.total === 20 && (
+              <p className="text-amber-300 font-bold text-sm tracking-wider mt-1 glow-gold">NATURAL 20!</p>
+            )}
+            {lastResult.dice.length === 1 && lastResult.dice[0].count === 1 && lastResult.dice[0].type === 20 && lastResult.total === 1 && (
+              <p className="text-red-400 font-bold text-sm tracking-wider mt-1">FUMBLE</p>
+            )}
             <div className="mt-2 flex flex-wrap justify-center gap-1.5">
               {lastResult.results.map((r, i) => {
                 const die = lastResult.dice[0]

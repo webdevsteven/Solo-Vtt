@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useMapStore } from '../store/mapStore'
 import type { MapToken, TokenColor, TokenShape } from '../types'
-import { Plus, Trash2, Layers, Eye, EyeOff, Pencil } from 'lucide-react'
+import { Plus, Trash2, Layers, Eye, EyeOff, Pencil, X } from 'lucide-react'
 
 const TOKEN_COLORS: Record<TokenColor, string> = {
   amber:  '#f59e0b',
@@ -618,9 +618,9 @@ export default function MapPage() {
         </div>
 
         {paintMode && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-stone-900/90 text-stone-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-stone-900/95 text-stone-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-2 shadow-lg">
             <span
-              className="w-3 h-3 rounded inline-block border border-stone-500"
+              className="w-3 h-3 rounded inline-block border border-stone-500 flex-none"
               style={{
                 backgroundColor: paintColor ?? 'transparent',
                 ...(paintColor === null && {
@@ -628,7 +628,14 @@ export default function MapPage() {
                 }),
               }}
             />
-            {paintColor === null ? 'Tap cells to erase' : 'Tap cells to paint'}
+            {paintColor === null ? 'Tap cells to erase' : 'Tap to paint'}
+            <button
+              onClick={() => setPaintMode(false)}
+              className="ml-1 text-stone-500 hover:text-stone-200 flex-none touch-manipulation"
+              title="Stop painting"
+            >
+              <X size={12} />
+            </button>
           </div>
         )}
 

@@ -272,8 +272,8 @@ export default function TablesPage() {
                 {store.rollHistory.slice(0, 20).map((r, i) => (
                   <div key={i} className="flex gap-3 bg-stone-800 rounded-lg px-3 py-2 text-xs items-center">
                     <span className="text-amber-400 font-mono font-bold min-w-[24px]">{r.roll}</span>
-                    <span className="text-stone-400">{r.tableName}:</span>
-                    <span className="text-stone-300 flex-1">{r.result}</span>
+                    <span className="text-stone-400 flex-none truncate max-w-[80px]">{r.tableName}:</span>
+                    <span className="text-stone-300 flex-1 truncate">{r.result}</span>
                     <SaveToJournal
                       size={13}
                       entry={{

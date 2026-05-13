@@ -2,9 +2,7 @@ import { useState, useMemo } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useJournalStore } from '../store/journalStore'
 import type { EntryTag, JournalEntry } from '../types'
-import {
-  Plus, Trash2, Pin, Search, X, ChevronLeft, Check,
-} from 'lucide-react'
+import { Plus, Trash2, Pin, Search, X, ChevronLeft, Check } from 'lucide-react'
 
 const TAG_COLORS: Record<EntryTag, { bg: string; text: string; border: string }> = {
   session:  { bg: 'bg-amber-900/40',  text: 'text-amber-400',  border: 'border-amber-800/60' },
@@ -18,7 +16,26 @@ const TAG_COLORS: Record<EntryTag, { bg: string; text: string; border: string }>
 
 const TAGS: EntryTag[] = ['session', 'note', 'npc', 'location', 'quest', 'clue', 'loot']
 
-function EntryCard({ entry, onOpen }: { entry: JournalEntry; onOpen: (e: JournalEntry) => void }) {
+function relativeTime(ts: number): string {
+  const d = Math.floor((Date.now() - ts) / 86400000)
+  if (d === 0) return 'today'
+  if (d === 1) return 'yesterday'
+  if (d < 7) return `${d}d ago`
+  if (d < 30) return `${Math.floor(d / 7)}w ago`
+  return `${Math.floor(d / 30)}mo ago`
+}
+
+function EntryCard({
+  entry,
+  onOpen,
+  onPin,
+  onDelete,
+}: {
+  entry: JournalEntry
+  onOpen: (e: JournalEntry) => void
+  onPin: () => void
+  onDelete: () => void
+}) {
   const tc = TAG_COLORS[entry.tag]
   return (
     <div
@@ -34,10 +51,33 @@ function EntryCard({ entry, onOpen }: { entry: JournalEntry; onOpen: (e: Journal
             {entry.sessionNumber && (
               <span className="text-xs text-stone-600">Session {entry.sessionNumber}</span>
             )}
-            {entry.pinned && <Pin size={12} className="text-amber-500 flex-none" />}
+            <span className="text-xs text-stone-700 ml-auto">{relativeTime(entry.timestamp)}</span>
           </div>
-          <h3 className="text-stone-100 font-semibold text-sm mt-1 truncate">{entry.title}</h3>
+          <h3 className="text-stone-100 font-semibold text-sm mt-1.5 truncate">{entry.title}</h3>
           <p className="text-stone-500 text-xs mt-0.5 line-clamp-2">{entry.body}</p>
+        </div>
+
+        {/* Always-visible actions — stopPropagation so card click doesn't fire */}
+        <div
+          className="flex flex-col items-center gap-1.5 flex-none ml-1 pt-0.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={onPin}
+            className={`p-1.5 rounded-lg touch-manipulation ${
+              entry.pinned ? 'bg-amber-900/60 text-amber-400' : 'bg-stone-700/60 text-stone-500 hover:text-stone-300'
+            }`}
+            title={entry.pinned ? 'Unpin' : 'Pin'}
+          >
+            <Pin size={13} />
+          </button>
+          <button
+            onClick={onDelete}
+            className="p-1.5 rounded-lg bg-stone-700/60 text-stone-600 hover:text-red-400 touch-manipulation"
+            title="Delete"
+          >
+            <Trash2 size={12} />
+          </button>
         </div>
       </div>
     </div>
@@ -60,6 +100,13 @@ function EntryEditor({ entry, onClose }: { entry: JournalEntry | null; isNew?: b
     onClose()
   }
 
+  const deleteEntry = () => {
+    if (entry) {
+      store.deleteEntry(entry.id)
+      onClose()
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-none flex items-center gap-3 px-4 py-3 border-b border-stone-800 bg-stone-950">
@@ -69,7 +116,12 @@ function EntryEditor({ entry, onClose }: { entry: JournalEntry | null; isNew?: b
         <span className="flex-1 text-sm font-semibold text-stone-200">
           {entry ? 'Edit Entry' : 'New Entry'}
         </span>
-        <button onClick={save} className="btn-primary py-1.5 px-4 text-sm flex items-center gap-1">
+        {entry && (
+          <button onClick={deleteEntry} className="p-1.5 text-stone-600 hover:text-red-400 touch-manipulation">
+            <Trash2 size={16} />
+          </button>
+        )}
+        <button onClick={save} disabled={!title.trim()} className="btn-primary py-1.5 px-4 text-sm flex items-center gap-1 disabled:opacity-40">
           <Check size={14} /> Save
         </button>
       </div>
@@ -83,7 +135,7 @@ function EntryEditor({ entry, onClose }: { entry: JournalEntry | null; isNew?: b
                 <button
                   key={t}
                   onClick={() => setTag(t)}
-                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize transition-all ${
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border capitalize transition-all touch-manipulation ${
                     tag === t ? `${tc.bg} ${tc.text} ${tc.border}` : 'bg-stone-800 text-stone-500 border-stone-700'
                   }`}
                 >
@@ -207,23 +259,13 @@ export default function JournalPage() {
           </div>
         )}
         {entries.map((e) => (
-          <div key={e.id} className="relative group">
-            <EntryCard entry={e} onOpen={(entry) => setEditing(entry)} />
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={(ev) => { ev.stopPropagation(); store.togglePin(e.id) }}
-                className={`p-1.5 rounded ${e.pinned ? 'bg-amber-900/60 text-amber-400' : 'bg-stone-700 text-stone-400'}`}
-              >
-                <Pin size={12} />
-              </button>
-              <button
-                onClick={(ev) => { ev.stopPropagation(); store.deleteEntry(e.id) }}
-                className="p-1.5 rounded bg-stone-700 text-stone-400 hover:text-red-400"
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          </div>
+          <EntryCard
+            key={e.id}
+            entry={e}
+            onOpen={(entry) => setEditing(entry)}
+            onPin={() => store.togglePin(e.id)}
+            onDelete={() => store.deleteEntry(e.id)}
+          />
         ))}
       </div>
 
@@ -231,7 +273,7 @@ export default function JournalPage() {
       <button
         onClick={() => setEditing('new')}
         className="absolute bottom-20 right-4 w-14 h-14 rounded-full bg-amber-700 hover:bg-amber-600
-                   shadow-lg flex items-center justify-center text-white active:scale-95 transition-all"
+                   shadow-lg flex items-center justify-center text-white active:scale-95 transition-all touch-manipulation"
       >
         <Plus size={24} />
       </button>

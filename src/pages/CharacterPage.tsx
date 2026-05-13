@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useCharacterStore } from '../store/characterStore'
 import type { Skill, InventoryItem, CharacterField, FieldType, SkillType } from '../types'
-import { Plus, Trash2, X, Edit2, Check } from 'lucide-react'
+import { Plus, Trash2, X, Edit2, Check, ChevronDown } from 'lucide-react'
 
 type Tab = 'stats' | 'skills' | 'inventory' | 'notes'
 
@@ -503,8 +503,13 @@ export default function CharacterPage() {
         title={char.name}
         subtitle={char.concept || 'Solo Adventurer'}
         left={
-          <button onClick={() => setShowCharList((s) => !s)}
-            className="text-stone-400 hover:text-stone-200 text-xs bg-stone-800 px-2 py-1 rounded">▾</button>
+          <button
+            onClick={() => setShowCharList((s) => !s)}
+            className="flex items-center gap-1 text-stone-400 hover:text-stone-200 bg-stone-800 px-2 py-1.5 rounded-lg touch-manipulation"
+            title="Switch character"
+          >
+            <ChevronDown size={15} className={`transition-transform duration-200 ${showCharList ? 'rotate-180' : ''}`} />
+          </button>
         }
         right={
           <span className="text-xs text-stone-500">

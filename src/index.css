@@ -75,6 +75,13 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 2px; }
 
+/* Allow text selection in inputs and textareas */
+input, textarea { user-select: text; -webkit-user-select: text; }
+
+/* Hide scrollbar utility (used on horizontal filter pill rows) */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* Prevent iOS bounce */
 .page { -webkit-overflow-scrolling: touch; }
 
