@@ -17,7 +17,7 @@ export default function App() {
   const [showWanderer, setShowWanderer] = useState(false)
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/Solo-Vtt">
       <div className="flex flex-col h-full w-full bg-stone-950 relative">
         <div className="flex-1 flex flex-col min-h-0">
           <Routes>
