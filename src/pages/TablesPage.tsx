@@ -29,7 +29,7 @@ function TableCard({
           </div>
         </button>
         <div className="flex gap-2">
-          {table.custom && onDelete && (
+          {onDelete && (
             <button
               onClick={() => onDelete(table.id)}
               className="p-1.5 text-stone-600 hover:text-red-400"
@@ -246,7 +246,7 @@ export default function TablesPage() {
             <TableCard
               table={table}
               onRoll={rollTable}
-              onDelete={store.deleteCustomTable}
+              onDelete={store.deleteTable}
             />
           </div>
         ))}

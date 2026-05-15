@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import BottomNav from './components/layout/BottomNav'
 import BackupRestore from './components/BackupRestore'
 import WandererSetup from './components/WandererSetup'
+import HomePage from './pages/HomePage'
 import MapPage from './pages/MapPage'
 import OraclePage from './pages/OraclePage'
 import DicePage from './pages/DicePage'
@@ -20,7 +21,7 @@ export default function App() {
       <div className="flex flex-col h-full w-full bg-stone-950 relative">
         <div className="flex-1 flex flex-col min-h-0">
           <Routes>
-            <Route path="/" element={<Navigate to="/map" replace />} />
+            <Route path="/" element={<HomePage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="/oracle" element={<OraclePage />} />
             <Route path="/dice" element={<DicePage />} />

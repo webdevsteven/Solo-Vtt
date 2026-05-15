@@ -18,6 +18,7 @@
 
   body {
     background-color: #0c0a09;
+    background-image: radial-gradient(ellipse at 50% 0%, #1c1208 0%, #0c0a09 65%);
     color: #e7e5e4;
     font-family: system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -56,7 +57,8 @@
   }
 
   .section-title {
-    @apply text-amber-500 text-xs font-bold uppercase tracking-widest mb-3;
+    @apply text-amber-600/90 text-[10px] font-bold uppercase tracking-[0.2em] mb-3;
+    letter-spacing: 0.18em;
   }
 
   .input {

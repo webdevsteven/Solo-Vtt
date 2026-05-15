@@ -870,9 +870,10 @@ const BUILT_IN_TABLES: RandomTable[] = [
 
 interface TablesStore {
   tables: RandomTable[]
+  hiddenBuiltinIds: string[]
   rollHistory: TableRollResult[]
   addCustomTable: (table: Omit<RandomTable, 'id' | 'custom'>) => void
-  deleteCustomTable: (id: string) => void
+  deleteTable: (id: string) => void
   rollTable: (tableId: string) => TableRollResult | null
   clearHistory: () => void
 }
@@ -881,6 +882,7 @@ export const useTablesStore = create<TablesStore>()(
   persist(
     (set, get) => ({
       tables: BUILT_IN_TABLES,
+      hiddenBuiltinIds: [],
       rollHistory: [],
 
       addCustomTable: (tableData) => {
@@ -892,8 +894,18 @@ export const useTablesStore = create<TablesStore>()(
         set((s) => ({ tables: [...s.tables, table] }))
       },
 
-      deleteCustomTable: (id) =>
-        set((s) => ({ tables: s.tables.filter((t) => t.id !== id || !t.custom) })),
+      deleteTable: (id) =>
+        set((s) => {
+          const target = s.tables.find((t) => t.id === id)
+          if (!target) return s
+          if (target.custom) {
+            return { tables: s.tables.filter((t) => t.id !== id) }
+          }
+          return {
+            hiddenBuiltinIds: [...s.hiddenBuiltinIds, id],
+            tables: s.tables.filter((t) => t.id !== id),
+          }
+        }),
 
       rollTable: (tableId) => {
         const { tables } = get()
@@ -918,16 +930,21 @@ export const useTablesStore = create<TablesStore>()(
       name: 'solo-vtt-tables',
       partialize: (s) => ({
         tables: s.tables.filter((t) => t.custom),
+        hiddenBuiltinIds: s.hiddenBuiltinIds,
         rollHistory: s.rollHistory,
       }),
-      merge: (persisted: any, current) => ({
-        ...current,
-        tables: [
-          ...BUILT_IN_TABLES,
-          ...(persisted?.tables ?? []),
-        ],
-        rollHistory: persisted?.rollHistory ?? [],
-      }),
+      merge: (persisted: any, current) => {
+        const hidden: string[] = persisted?.hiddenBuiltinIds ?? []
+        return {
+          ...current,
+          hiddenBuiltinIds: hidden,
+          tables: [
+            ...BUILT_IN_TABLES.filter((t) => !hidden.includes(t.id)),
+            ...(persisted?.tables ?? []),
+          ],
+          rollHistory: persisted?.rollHistory ?? [],
+        }
+      },
     },
   ),
 )
