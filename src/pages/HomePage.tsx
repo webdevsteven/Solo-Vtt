@@ -143,10 +143,7 @@ export default function HomePage() {
               <Dices size={16} className="text-stone-600 flex-none" strokeWidth={1.5} />
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-stone-600 uppercase tracking-wide">Last Roll</p>
-                <p className="text-stone-400 text-xs truncate">
-                  {lastRoll.dice.map((d) => `${d.count}d${d.type}`).join('+')}
-                  {lastRoll.label ? ` · ${lastRoll.label}` : ''}
-                </p>
+                <p className="text-stone-400 text-xs truncate font-mono">{lastRoll.notation}</p>
               </div>
               <p className="font-display font-bold text-2xl text-amber-400 flex-none">{lastRoll.total}</p>
             </div>

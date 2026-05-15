@@ -1,311 +1,367 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useDiceStore } from '../store/diceStore'
-import type { DieType } from '../types'
+import type { DicePreset, DiceRollResult } from '../store/diceStore'
 import SaveToJournal from '../components/SaveToJournal'
-import { Trash2, ChevronDown } from 'lucide-react'
+import { Plus, Pencil, Trash2, ChevronDown, X } from 'lucide-react'
 
-const DIE_TYPES: DieType[] = [4, 6, 8, 10, 12, 20, 100]
+const QUICK_SIDES = [4, 6, 8, 10, 12, 20, 100] as const
 
-const DIE_COLORS: Record<DieType, string> = {
-  4:   '#8b5cf6',
-  6:   '#3b82f6',
-  8:   '#06b6d4',
-  10:  '#22c55e',
-  12:  '#f59e0b',
-  20:  '#ef4444',
-  100: '#ec4899',
-}
+// ── Preset editor modal ───────────────────────────────────────────────────────
 
-function DieShape({ sides, size, color }: { sides: DieType; size: number; color: string }) {
-  const s = size
-  const cx = s / 2
-  const cy = s / 2
-
-  const paths: Record<DieType, string> = {
-    4:   `M${cx},4 L${s - 4},${s - 4} L4,${s - 4} Z`,
-    6:   `M6,6 L${s - 6},6 L${s - 6},${s - 6} L6,${s - 6} Z`,
-    8:   `M${cx},4 L${s - 4},${cy} L${cx},${s - 4} L4,${cy} Z`,
-    10:  `M${cx},4 L${s - 4},${cy} L${cx},${s - 4} L4,${cy} Z`,
-    12:  `M${cx},4 L${s - 6},10 L${s - 4},${cy} L${s - 6},${s - 10} L${cx},${s - 4} L6,${s - 10} L4,${cy} L6,10 Z`,
-    20:  `M${cx},4 L${s - 4},${s - 4} L4,${s - 4} Z`,
-    100: `M${cx},4 L${s - 4},${cy} L${cx},${s - 4} L4,${cy} Z`,
-  }
+function PresetModal({
+  preset,
+  onSave,
+  onDelete,
+  onClose,
+}: {
+  preset: DicePreset | null
+  onSave: (label: string, notation: string) => void
+  onDelete?: () => void
+  onClose: () => void
+}) {
+  const [label, setLabel] = useState(preset?.label ?? '')
+  const [notation, setNotation] = useState(preset?.notation ?? '')
 
   return (
-    <svg width={s} height={s} viewBox={`0 0 ${s} ${s}`}>
-      <path d={paths[sides]} fill={color} opacity={0.9} />
-      <text
-        x={cx}
-        y={cy + (sides === 4 ? 4 : 1)}
-        textAnchor="middle"
-        dominantBaseline="middle"
-        fill="white"
-        fontSize={sides === 100 ? 9 : 12}
-        fontWeight="bold"
-        fontFamily="system-ui"
+    <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
+      <div
+        className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4"
+        onClick={(e) => e.stopPropagation()}
       >
-        d{sides}
-      </text>
-    </svg>
+        <div className="flex items-center justify-between">
+          <h3 className="text-stone-100 font-bold">{preset ? 'Edit Preset' : 'New Preset'}</h3>
+          <button onClick={onClose} className="text-stone-500 hover:text-stone-300">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div>
+          <label className="section-title block">Label</label>
+          <input
+            className="input"
+            placeholder="Advantage"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="section-title block">Notation</label>
+          <input
+            className="input font-mono"
+            placeholder="2d20kh1"
+            value={notation}
+            onChange={(e) => setNotation(e.target.value)}
+          />
+          <p className="text-stone-600 text-xs mt-1.5">
+            kh = keep high · kl = keep low · dh = drop high · dl = drop low
+          </p>
+        </div>
+
+        <div className="flex gap-3">
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="btn-secondary px-3 text-red-400 hover:text-red-300"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
+          <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+          <button
+            onClick={() => {
+              if (label.trim() && notation.trim()) onSave(label.trim(), notation.trim())
+            }}
+            disabled={!label.trim() || !notation.trim()}
+            className="btn-primary flex-1 disabled:opacity-40"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
-const PRESETS = [
-  { label: '1d20',  dice: [{ type: 20  as DieType, count: 1 }], mod: 0 },
-  { label: '2d6',   dice: [{ type: 6   as DieType, count: 2 }], mod: 0 },
-  { label: '1d100', dice: [{ type: 100 as DieType, count: 1 }], mod: 0 },
-  { label: '4d6',   dice: [{ type: 6   as DieType, count: 4 }], mod: 0 },
-]
+// ── Result display ────────────────────────────────────────────────────────────
+
+function ResultDisplay({ result }: { result: DiceRollResult }) {
+  const g0 = result.groups[0]
+  const isNat20 =
+    result.groups.length === 1 && g0.rolls.length === 1 &&
+    g0.rolls[0] === 20 && g0.kept[0] && g0.sides === 20
+  const isFumble =
+    result.groups.length === 1 && g0.rolls.length === 1 &&
+    g0.rolls[0] === 1 && g0.kept[0] && g0.sides === 20
+
+  const hasDropped = result.groups.some((g) => g.kept.some((k) => !k))
+  const showGroupLabel = result.groups.length > 1 || hasDropped
+
+  return (
+    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 text-center">
+      <p className="text-7xl font-display font-bold text-amber-400 glow-gold leading-none tracking-tight">
+        {result.total}
+      </p>
+
+      {isNat20 && (
+        <p className="text-amber-300 font-bold text-[10px] tracking-[0.3em] uppercase mt-2 glow-gold">
+          Natural 20
+        </p>
+      )}
+      {isFumble && (
+        <p className="text-red-400 font-bold text-[10px] tracking-[0.3em] uppercase mt-2">
+          Fumble
+        </p>
+      )}
+
+      <p className="text-stone-600 text-[11px] font-mono mt-2">{result.notation}</p>
+
+      <div className="mt-4 space-y-3">
+        {result.groups.map((g, gi) => (
+          <div key={gi}>
+            {showGroupLabel && (
+              <p className="text-stone-600 text-[10px] font-mono mb-1.5">{g.notation}</p>
+            )}
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {g.rolls.map((r, ri) => (
+                <span
+                  key={ri}
+                  className={`font-mono text-sm px-2.5 py-1 rounded-lg ${
+                    g.kept[ri]
+                      ? 'bg-stone-800 text-stone-200 font-semibold'
+                      : 'bg-stone-800/40 text-stone-600 line-through'
+                  }`}
+                >
+                  {r}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {result.modifier !== 0 && (
+          <p className="text-stone-500 text-sm font-mono">
+            {result.modifier > 0 ? `+${result.modifier}` : result.modifier}
+          </p>
+        )}
+      </div>
+
+      <div className="mt-4 flex justify-center">
+        <SaveToJournal
+          entry={{
+            title: `Rolled ${result.notation} = ${result.total}`,
+            body:
+              result.groups
+                .map((g) => `${g.notation}: [${g.rolls.join(', ')}] → ${g.subtotal}`)
+                .join('\n') +
+              (result.modifier
+                ? `\nModifier: ${result.modifier > 0 ? '+' : ''}${result.modifier}`
+                : '') +
+              `\nTotal: ${result.total}`,
+            tag: 'note',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function DicePage() {
   const store = useDiceStore()
+  const [notation, setNotation] = useState('')
+  const [result, setResult] = useState<DiceRollResult | null>(() => store.history[0] ?? null)
   const [rolling, setRolling] = useState(false)
-  const [rollingDie, setRollingDie] = useState<string | null>(null)
+  const [parseError, setParseError] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
-  const [modInput, setModInput] = useState('0')
-  const resultRef = useRef<HTMLDivElement>(null)
+  const [editingPreset, setEditingPreset] = useState<DicePreset | 'new' | null>(null)
 
-  const poolDescription = store.pool
-    .map((d) => `${d.count}d${d.type}`)
-    .join(' + ')
-
-  const roll = async () => {
-    if (store.pool.length === 0) return
+  const doRoll = async (n: string) => {
+    const trimmed = n.trim()
+    if (!trimmed || rolling) return
     setRolling(true)
-    setRollingDie('rolling')
-    if (navigator.vibrate) navigator.vibrate([40, 20, 60])
-    await new Promise((r) => setTimeout(r, 500))
-    store.roll()
+    setParseError(false)
+    if (navigator.vibrate) navigator.vibrate(40)
+    await new Promise((r) => setTimeout(r, 140))
+    const res = store.roll(trimmed)
+    if (res) {
+      setResult(res)
+    } else {
+      setParseError(true)
+    }
     setRolling(false)
-    setRollingDie(null)
   }
 
-  const quickRoll = async (type: DieType) => {
-    setRollingDie(`${type}`)
-    if (navigator.vibrate) navigator.vibrate(50)
-    await new Promise((r) => setTimeout(r, 300))
-    store.quickRoll(type)
-    setRollingDie(null)
+  const quickRoll = (sides: number) => {
+    if (navigator.vibrate) navigator.vibrate(25)
+    const res = store.quickRoll(sides)
+    setResult(res)
+    setNotation(res.notation)
+    setParseError(false)
   }
-
-  const lastResult = store.history[0]
-  const mod = parseInt(modInput) || 0
 
   return (
-    <div className="flex flex-col h-full">
-      <TopBar title="Dice Roller" subtitle="Your fate in these hands" />
+    <div className="flex flex-col h-full relative">
+      <TopBar title="Dice" />
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        {/* Quick Roll buttons */}
-        <div>
-          <p className="section-title">Quick Roll</p>
-          <div className="grid grid-cols-4 gap-2">
-            {DIE_TYPES.map((d) => (
-              <button
-                key={d}
-                onClick={() => quickRoll(d)}
-                className={`flex flex-col items-center justify-center py-3 rounded-xl bg-stone-800 border border-stone-700
-                  active:scale-95 transition-all touch-manipulation
-                  ${rollingDie === `${d}` ? 'dice-roll' : ''}`}
-              >
-                <DieShape sides={d} size={40} color={DIE_COLORS[d]} />
-              </button>
-            ))}
-          </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+
+        {/* Quick-roll buttons */}
+        <div className="grid grid-cols-7 gap-1.5">
+          {QUICK_SIDES.map((sides) => (
+            <button
+              key={sides}
+              onClick={() => quickRoll(sides)}
+              className="py-3.5 rounded-xl bg-stone-900 border border-stone-800 hover:border-stone-600 active:bg-stone-800 active:scale-95 transition-all touch-manipulation font-mono font-bold text-sm text-stone-300"
+            >
+              {sides === 100 ? 'd%' : `d${sides}`}
+            </button>
+          ))}
         </div>
 
-        {/* Dice Pool Builder */}
-        <div className="card space-y-3">
-          <p className="section-title">Dice Pool</p>
-          <div className="grid grid-cols-4 gap-2">
-            {DIE_TYPES.map((d) => {
-              const inPool = store.pool.find((p) => p.type === d)
-              return (
-                <div key={d} className="flex flex-col items-center gap-1">
-                  <button
-                    onClick={() => store.addDie(d)}
-                    className="w-full py-2 rounded-lg bg-stone-700 text-stone-300 text-xs font-semibold
-                               active:scale-95 transition-all touch-manipulation"
-                  >
-                    +d{d}
-                  </button>
-                  {inPool && (
-                    <span
-                      className="text-xs font-bold"
-                      style={{ color: DIE_COLORS[d] }}
-                    >
-                      {inPool.count}d{d}
-                    </span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Modifier */}
-          <div className="flex items-center gap-3">
-            <label className="text-stone-400 text-sm">Modifier</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setModInput((v) => String(parseInt(v || '0') - 1))}
-                className="w-8 h-8 rounded bg-stone-700 text-stone-200 font-bold"
-              >−</button>
-              <input
-                className="input w-16 text-center text-sm"
-                value={modInput}
-                onChange={(e) => setModInput(e.target.value)}
-                type="number"
-              />
-              <button
-                onClick={() => setModInput((v) => String(parseInt(v || '0') + 1))}
-                className="w-8 h-8 rounded bg-stone-700 text-stone-200 font-bold"
-              >+</button>
-            </div>
-          </div>
-
-          {/* Pool summary */}
-          {store.pool.length > 0 && (
-            <div className="bg-stone-900 rounded-lg px-3 py-2 text-sm text-stone-300">
-              {poolDescription}
-              {mod !== 0 ? (mod > 0 ? ` + ${mod}` : ` − ${Math.abs(mod)}`) : ''}
-            </div>
-          )}
-
+        {/* Notation input */}
+        <div className="space-y-1.5">
           <div className="flex gap-2">
+            <input
+              value={notation}
+              onChange={(e) => { setNotation(e.target.value); setParseError(false) }}
+              onKeyDown={(e) => e.key === 'Enter' && doRoll(notation)}
+              placeholder="e.g. 3d6  ·  4d6kh3  ·  2d20kl1+5"
+              className={`input flex-1 font-mono text-sm ${parseError ? 'border-red-700' : ''}`}
+            />
             <button
-              onClick={() => { store.clearPool(); setModInput('0') }}
-              className="btn-secondary px-3"
+              onClick={() => doRoll(notation)}
+              disabled={!notation.trim() || rolling}
+              className="btn-primary px-5 disabled:opacity-40"
             >
-              <Trash2 size={16} />
-            </button>
-            <button
-              onClick={() => { store.setModifier(mod); roll() }}
-              disabled={store.pool.length === 0 || rolling}
-              className={`btn-primary flex-1 text-base ${rolling ? 'dice-roll opacity-80' : ''}`}
-            >
-              {rolling ? 'Rolling…' : 'Roll!'}
+              {rolling ? '…' : 'Roll'}
             </button>
           </div>
+          {parseError && (
+            <p className="text-red-500 text-xs px-1">Couldn't parse that notation.</p>
+          )}
         </div>
+
+        {/* Result */}
+        {result && <ResultDisplay result={result} />}
 
         {/* Presets */}
         <div>
-          <p className="section-title">Presets</p>
-          <div className="grid grid-cols-2 gap-2">
-            {PRESETS.map((p) => (
-              <button
-                key={p.label}
-                onClick={async () => {
-                  store.clearPool()
-                  p.dice.forEach(({ type, count }) => {
-                    for (let i = 0; i < count; i++) store.addDie(type)
-                  })
-                  store.setModifier(p.mod)
-                  setRolling(true)
-                  if (navigator.vibrate) navigator.vibrate([40, 20, 60])
-                  await new Promise((r) => setTimeout(r, 400))
-                  store.roll(p.label)
-                  setRolling(false)
-                }}
-                className="btn-secondary text-sm"
-              >
-                {p.label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 mb-2.5">
+            <p className="section-title mb-0 flex-1">Presets</p>
+            <button
+              onClick={() => setEditingPreset('new')}
+              className="text-stone-600 hover:text-amber-400 transition-colors"
+            >
+              <Plus size={15} />
+            </button>
           </div>
+
+          {store.presets.length === 0 ? (
+            <p className="text-stone-600 text-xs">No presets yet — tap + to add one.</p>
+          ) : (
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {store.presets.map((preset) => (
+                <div
+                  key={preset.id}
+                  className="flex-none flex rounded-xl overflow-hidden border border-stone-800"
+                >
+                  <button
+                    onClick={() => {
+                      setNotation(preset.notation)
+                      doRoll(preset.notation)
+                    }}
+                    className="px-3 py-2 bg-stone-900 hover:bg-stone-800 transition-colors touch-manipulation text-left"
+                  >
+                    <p className="text-stone-200 text-xs font-semibold whitespace-nowrap">
+                      {preset.label}
+                    </p>
+                    <p className="text-stone-600 text-[10px] font-mono">{preset.notation}</p>
+                  </button>
+                  <button
+                    onClick={() => setEditingPreset(preset)}
+                    className="px-2 bg-stone-900 hover:bg-stone-800 border-l border-stone-800 text-stone-700 hover:text-stone-400 transition-colors"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Last Result */}
-        {lastResult && (
-          <div ref={resultRef} className="card border-amber-800/50 text-center py-5 relative">
-            <div className="absolute top-3 right-3">
-              <SaveToJournal
-                entry={{
-                  title: `Rolled ${lastResult.dice.map((d) => `${d.count}d${d.type}`).join('+')}${lastResult.modifier ? (lastResult.modifier > 0 ? `+${lastResult.modifier}` : lastResult.modifier) : ''} = ${lastResult.total}`,
-                  body: `Results: [${lastResult.results.join(', ')}]${lastResult.modifier ? ` + modifier ${lastResult.modifier}` : ''}\nTotal: ${lastResult.total}`,
-                  tag: 'note',
-                }}
-              />
-            </div>
-            <p className="section-title">Last Roll</p>
-            {lastResult.label && (
-              <p className="text-stone-400 text-sm mb-1">{lastResult.label}</p>
-            )}
-            <p className="text-6xl font-bold font-display text-amber-400 glow-gold">
-              {lastResult.total}
-            </p>
-            {lastResult.dice.length === 1 && lastResult.dice[0].count === 1 && lastResult.dice[0].type === 20 && lastResult.total === 20 && (
-              <p className="text-amber-300 font-bold text-sm tracking-wider mt-1 glow-gold">NATURAL 20!</p>
-            )}
-            {lastResult.dice.length === 1 && lastResult.dice[0].count === 1 && lastResult.dice[0].type === 20 && lastResult.total === 1 && (
-              <p className="text-red-400 font-bold text-sm tracking-wider mt-1">FUMBLE</p>
-            )}
-            <div className="mt-2 flex flex-wrap justify-center gap-1.5">
-              {lastResult.results.map((r, i) => {
-                const die = lastResult.dice[0]
-                const isMax = r === (die?.type ?? 0)
-                const isMin = r === 1
-                return (
-                  <span
-                    key={i}
-                    className={`text-sm font-mono px-2 py-0.5 rounded ${
-                      isMax ? 'bg-amber-900/60 text-amber-300 font-bold' :
-                      isMin ? 'bg-red-900/60 text-red-300' :
-                      'bg-stone-700 text-stone-300'
-                    }`}
-                  >
-                    {r}
-                  </span>
-                )
-              })}
-              {lastResult.modifier !== 0 && (
-                <span className="text-sm font-mono px-2 py-0.5 rounded bg-stone-700 text-stone-400">
-                  {lastResult.modifier > 0 ? `+${lastResult.modifier}` : lastResult.modifier}
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* History */}
-        {store.history.length > 1 && (
+        {store.history.length > 0 && (
           <div>
             <button
               onClick={() => setShowHistory((s) => !s)}
-              className="flex items-center gap-2 text-stone-400 text-sm hover:text-stone-200 w-full"
+              className="flex items-center gap-2 text-stone-500 w-full"
             >
-              <span className="section-title mb-0">History ({store.history.length - 1} more)</span>
-              <ChevronDown size={14} className={`transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+              <span className="section-title mb-0">History ({store.history.length})</span>
+              <ChevronDown
+                size={13}
+                className={`ml-auto transition-transform ${showHistory ? 'rotate-180' : ''}`}
+              />
             </button>
+
             {showHistory && (
               <div className="mt-2 space-y-1.5">
-                {store.history.slice(1, 30).map((r) => (
-                  <div key={r.id} className="flex items-center gap-3 bg-stone-800 rounded-lg px-3 py-2">
-                    <span className="text-amber-400 font-bold font-mono text-sm min-w-[40px] text-right">{r.total}</span>
-                    <span className="text-stone-400 text-xs flex-1">
-                      {r.dice.map((d) => `${d.count}d${d.type}`).join('+')}
-                      {r.modifier ? (r.modifier > 0 ? `+${r.modifier}` : r.modifier) : ''}
+                {store.history.map((r) => (
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-3 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2"
+                  >
+                    <span className="text-amber-400 font-bold font-mono text-sm w-10 text-right flex-none">
+                      {r.total}
                     </span>
-                    <span className="text-stone-600 text-xs">[{r.results.join(', ')}]</span>
+                    <span className="text-stone-500 text-xs font-mono flex-1 truncate">
+                      {r.notation}
+                    </span>
                     <SaveToJournal
                       size={13}
                       entry={{
-                        title: `Rolled ${r.dice.map((d) => `${d.count}d${d.type}`).join('+')} = ${r.total}`,
-                        body: `Results: [${r.results.join(', ')}]\nTotal: ${r.total}`,
+                        title: `Rolled ${r.notation} = ${r.total}`,
+                        body: `Notation: ${r.notation}\nTotal: ${r.total}`,
                         tag: 'note',
                       }}
                     />
                   </div>
                 ))}
-                <button onClick={store.clearHistory} className="text-xs text-stone-500 hover:text-red-400 flex items-center gap-1 mt-2">
-                  <Trash2 size={12} /> Clear history
+                <button
+                  onClick={store.clearHistory}
+                  className="text-xs text-stone-600 hover:text-red-400 flex items-center gap-1 mt-1 transition-colors"
+                >
+                  <Trash2 size={11} /> Clear history
                 </button>
               </div>
             )}
           </div>
         )}
+
       </div>
+
+      {/* Preset modal */}
+      {editingPreset !== null && (
+        <PresetModal
+          preset={editingPreset === 'new' ? null : editingPreset}
+          onSave={(lbl, not) => {
+            if (editingPreset === 'new') {
+              store.addPreset(lbl, not)
+            } else {
+              store.updatePreset(editingPreset.id, lbl, not)
+            }
+            setEditingPreset(null)
+          }}
+          onDelete={
+            editingPreset !== 'new'
+              ? () => { store.deletePreset(editingPreset.id); setEditingPreset(null) }
+              : undefined
+          }
+          onClose={() => setEditingPreset(null)}
+        />
+      )}
     </div>
   )
 }
