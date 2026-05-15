@@ -22,15 +22,15 @@ export default function BottomNav() {
           to={to}
           end={end}
           className={({ isActive }) =>
-            `flex-1 flex flex-col items-center justify-center py-1.5 gap-0.5 transition-colors touch-manipulation ${
-              isActive
-                ? 'text-amber-500'
-                : 'text-stone-500 hover:text-stone-300'
+            `flex-1 flex flex-col items-center justify-center py-2.5 transition-colors touch-manipulation ${
+              isActive ? 'text-amber-500' : 'text-stone-600 hover:text-stone-400'
             }`
           }
+          title={label}
         >
-          <Icon size={18} strokeWidth={1.5} />
-          <span className="text-[9px] font-medium">{label}</span>
+          {({ isActive }) => (
+            <Icon size={isActive ? 22 : 20} strokeWidth={isActive ? 2 : 1.5} />
+          )}
         </NavLink>
       ))}
     </nav>

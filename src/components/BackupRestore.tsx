@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Download, Upload, X, AlertTriangle, Swords } from 'lucide-react'
+import { Download, Upload, X, AlertTriangle, Swords, Trash2 } from 'lucide-react'
 
 const STORE_KEYS = [
   'solo-vtt-maps',
@@ -24,8 +24,14 @@ interface Props {
 export default function BackupRestore({ onClose, onNewWandererGame }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [confirmRestore, setConfirmRestore] = useState(false)
+  const [confirmReset, setConfirmReset] = useState(false)
   const [pendingData, setPendingData] = useState<Record<string, string> | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const handleReset = () => {
+    STORE_KEYS.forEach((key) => localStorage.removeItem(key))
+    window.location.reload()
+  }
 
   const handleExport = () => {
     const data: Record<string, unknown> = {}
@@ -150,6 +156,30 @@ export default function BackupRestore({ onClose, onNewWandererGame }: Props) {
             <p className="text-red-400 text-xs flex items-center gap-1">
               <AlertTriangle size={12} /> {error}
             </p>
+          )}
+        </div>
+
+        {/* Reset */}
+        <div className="card space-y-2">
+          <p className="text-stone-200 text-sm font-semibold">Reset All Data</p>
+          <p className="text-stone-500 text-xs">
+            Wipe everything and start fresh. <span className="text-red-400 font-medium">Cannot be undone.</span>
+          </p>
+          {!confirmReset ? (
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="btn-secondary w-full flex items-center justify-center gap-2 text-red-400 hover:text-red-300"
+            >
+              <Trash2 size={15} /> Reset All Data
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-red-400 text-xs font-semibold text-center">Are you sure? All data will be lost.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmReset(false)} className="btn-secondary flex-1 text-sm py-2">Cancel</button>
+                <button onClick={handleReset} className="btn-danger flex-1 text-sm py-2">Yes, Reset</button>
+              </div>
+            </div>
           )}
         </div>
 
