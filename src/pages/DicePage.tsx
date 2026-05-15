@@ -26,7 +26,7 @@ function PresetModal({
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
       <div
-        className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4"
+        className="modal-sheet bg-stone-900 w-full rounded-t-2xl p-5 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -204,7 +204,7 @@ export default function DicePage() {
 
   return (
     <div className="flex flex-col h-full relative">
-      <TopBar title="Dice" />
+      <TopBar title="Dice" subtitle="Roll &amp; track results" />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
 
@@ -239,6 +239,9 @@ export default function DicePage() {
               {rolling ? '…' : 'Roll'}
             </button>
           </div>
+          <p className="text-stone-700 text-[10px] font-mono px-1">
+            kh · kl · dh · dl · e.g. 4d6kh3+2d4-1
+          </p>
           {parseError && (
             <p className="text-red-500 text-xs px-1">Couldn't parse that notation.</p>
           )}

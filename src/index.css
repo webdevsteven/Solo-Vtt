@@ -57,7 +57,7 @@
   }
 
   .section-title {
-    @apply text-amber-600/90 text-[10px] font-bold uppercase tracking-[0.2em] mb-3;
+    @apply text-amber-600/90 text-[10px] font-bold uppercase tracking-[0.2em] mb-2;
     letter-spacing: 0.18em;
   }
 
@@ -86,6 +86,13 @@ input, textarea { user-select: text; -webkit-user-select: text; }
 
 /* Prevent iOS bounce */
 .page { -webkit-overflow-scrolling: touch; }
+
+/* Bottom-sheet modal slide-up animation */
+@keyframes slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.modal-sheet { animation: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1); }
 
 /* Dice shake animation */
 @keyframes shake {

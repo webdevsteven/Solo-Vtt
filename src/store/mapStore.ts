@@ -16,6 +16,7 @@ const DEFAULT_MAP: MapState = {
 interface MapStore {
   maps: MapState[]
   activeMapId: string
+  paintSnapshot: { mapId: string; cells: Record<string, string> } | null
   activeMap: () => MapState
   addMap: (name: string) => void
   setActiveMap: (id: string) => void
@@ -30,6 +31,8 @@ interface MapStore {
   fillFog: (mapId: string) => void
   setPaintCell: (mapId: string, cell: string, color: string | null) => void
   clearPaintedCells: (mapId: string) => void
+  savePaintSnapshot: (mapId: string) => void
+  undoPaintStroke: (mapId: string) => void
 }
 
 export const useMapStore = create<MapStore>()(
@@ -37,6 +40,7 @@ export const useMapStore = create<MapStore>()(
     (set, get) => ({
       maps: [DEFAULT_MAP],
       activeMapId: 'default',
+      paintSnapshot: null,
 
       activeMap: () => {
         const { maps, activeMapId } = get()
@@ -167,6 +171,24 @@ export const useMapStore = create<MapStore>()(
             m.id === mapId ? { ...m, paintedCells: {} } : m,
           ),
         })),
+
+      savePaintSnapshot: (mapId) =>
+        set((s) => {
+          const map = s.maps.find((m) => m.id === mapId)
+          if (!map) return {}
+          return { paintSnapshot: { mapId, cells: { ...(map.paintedCells ?? {}) } } }
+        }),
+
+      undoPaintStroke: (mapId) =>
+        set((s) => {
+          if (!s.paintSnapshot || s.paintSnapshot.mapId !== mapId) return {}
+          return {
+            maps: s.maps.map((m) =>
+              m.id === mapId ? { ...m, paintedCells: s.paintSnapshot!.cells } : m,
+            ),
+            paintSnapshot: null,
+          }
+        }),
     }),
     { name: 'solo-vtt-maps' },
   ),

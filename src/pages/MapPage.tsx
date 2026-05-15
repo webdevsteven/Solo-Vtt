@@ -244,6 +244,7 @@ export default function MapPage() {
     const { gx, gy } = canvasToGrid(e.clientX, e.clientY)
 
     if (paintMode) {
+      store.savePaintSnapshot(map.id)
       paintCell(gx, gy)
       isPaintingRef.current = true
       return
@@ -327,6 +328,7 @@ export default function MapPage() {
     const { gx, gy } = canvasToGrid(t.clientX, t.clientY)
 
     if (paintMode) {
+      store.savePaintSnapshot(map.id)
       paintCell(gx, gy)
       isPaintingRef.current = true
       lastTouchRef.current = null
@@ -544,12 +546,21 @@ export default function MapPage() {
               >
                 {paintMode ? 'On' : 'Off'}
               </button>
-              <button
-                onClick={() => store.clearPaintedCells(map.id)}
-                className="btn-secondary text-xs py-1 px-2 ml-auto"
-              >
-                Clear All
-              </button>
+              <div className="flex gap-1.5 ml-auto">
+                <button
+                  onClick={() => store.undoPaintStroke(map.id)}
+                  disabled={!store.paintSnapshot || store.paintSnapshot.mapId !== map.id}
+                  className="btn-secondary text-xs py-1 px-2 disabled:opacity-40"
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={() => store.clearPaintedCells(map.id)}
+                  className="btn-secondary text-xs py-1 px-2"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
             <div className="flex gap-2 flex-wrap">
               {PAINT_COLORS.map(({ label, color }) => (

@@ -175,7 +175,7 @@ export default function WandererSetup({ onClose }: Props) {
   return (
     <div className="absolute inset-0 bg-black/80 flex items-end z-[70]" onClick={onClose}>
       <div
-        className="bg-stone-900 w-full rounded-t-2xl max-h-[92vh] flex flex-col"
+        className="modal-sheet bg-stone-900 w-full rounded-t-2xl max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

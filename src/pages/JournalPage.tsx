@@ -200,7 +200,15 @@ export default function JournalPage() {
         title="Journal"
         subtitle={`${store.entries.length} entries · Session ${store.sessionNumber}`}
         right={
-          <button onClick={store.incrementSession} className="text-xs text-stone-500 hover:text-stone-300 px-2 py-1 rounded bg-stone-800">
+          <button
+            onClick={() => {
+              const nextNum = store.sessionNumber + 1
+              store.incrementSession()
+              const entry = store.addEntry(`Session ${nextNum}`, '', 'session')
+              store.togglePin(entry.id)
+            }}
+            className="text-xs text-stone-500 hover:text-stone-300 px-2 py-1 rounded bg-stone-800"
+          >
             +Session
           </button>
         }

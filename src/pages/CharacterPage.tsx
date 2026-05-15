@@ -114,7 +114,7 @@ function AddFieldModal({ charId, onClose }: { charId: string; onClose: () => voi
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
-      <div className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <h3 className="text-stone-100 font-bold flex-1">Add Field</h3>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-200"><X size={20} /></button>
@@ -200,7 +200,7 @@ function EditFieldModal({ field, charId, onClose }: { field: CharacterField; cha
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
-      <div className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <h3 className="text-stone-100 font-bold flex-1">Edit Field</h3>
           <span className="text-xs text-stone-500 bg-stone-800 px-2 py-0.5 rounded capitalize">{field.type}</span>
@@ -290,7 +290,7 @@ function AddSkillModal({ charId, onClose }: { charId: string; onClose: () => voi
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
-      <div className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <h3 className="text-stone-100 font-bold flex-1">Add Skill</h3>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-200"><X size={20} /></button>
@@ -360,7 +360,7 @@ function EditSkillModal({ skill, charId, onClose }: { skill: Skill; charId: stri
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
-      <div className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <h3 className="text-stone-100 font-bold flex-1">Edit Skill</h3>
           <span className="text-xs text-stone-500 bg-stone-800 px-2 py-0.5 rounded capitalize">{type}</span>
@@ -423,7 +423,7 @@ function ItemFormModal({
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
-      <div className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet bg-stone-900 w-full rounded-t-2xl p-5 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <h3 className="text-stone-100 font-bold flex-1">{title}</h3>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-200"><X size={20} /></button>
@@ -468,6 +468,7 @@ export default function CharacterPage() {
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(char.name)
   const [showConditions, setShowConditions] = useState(false)
+  const [customCondition, setCustomCondition] = useState('')
   const [showCharList, setShowCharList] = useState(false)
 
   // field modals
@@ -581,13 +582,44 @@ export default function CharacterPage() {
           </button>
 
           {showConditions && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {CONDITIONS.filter((c) => !char.conditions.includes(c)).map((c) => (
-                <button key={c} onClick={() => { store.addCondition(char.id, c); setShowConditions(false) }}
-                  className="text-xs bg-stone-800 text-stone-300 border border-stone-700 px-2 py-0.5 rounded-full hover:border-red-700 hover:text-red-300">
-                  {c}
+            <div className="mt-2 space-y-2">
+              <div className="flex flex-wrap gap-1.5">
+                {CONDITIONS.filter((c) => !char.conditions.includes(c)).map((c) => (
+                  <button key={c} onClick={() => { store.addCondition(char.id, c); setShowConditions(false) }}
+                    className="text-xs bg-stone-800 text-stone-300 border border-stone-700 px-2 py-0.5 rounded-full hover:border-red-700 hover:text-red-300">
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className="input text-xs py-1 flex-1"
+                  placeholder="Custom condition…"
+                  value={customCondition}
+                  onChange={(e) => setCustomCondition(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && customCondition.trim() && !char.conditions.includes(customCondition.trim())) {
+                      store.addCondition(char.id, customCondition.trim())
+                      setCustomCondition('')
+                      setShowConditions(false)
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const v = customCondition.trim()
+                    if (v && !char.conditions.includes(v)) {
+                      store.addCondition(char.id, v)
+                      setCustomCondition('')
+                      setShowConditions(false)
+                    }
+                  }}
+                  disabled={!customCondition.trim()}
+                  className="btn-primary text-xs py-1 px-3 disabled:opacity-40"
+                >
+                  <Plus size={13} />
                 </button>
-              ))}
+              </div>
             </div>
           )}
         </div>
@@ -641,7 +673,13 @@ export default function CharacterPage() {
                   <label className="section-title block">XP</label>
                   <div className="flex items-center gap-2">
                     <button onClick={() => store.updateCharacter(char.id, { xp: Math.max(0, char.xp - 1) })} className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">−</button>
-                    <span className="flex-1 text-center font-mono font-bold text-amber-400">{char.xp}</span>
+                    <input
+                      type="number"
+                      className="input w-16 text-center font-mono font-bold text-amber-400 py-1 px-1"
+                      value={char.xp}
+                      min={0}
+                      onChange={(e) => store.updateCharacter(char.id, { xp: Math.max(0, parseInt(e.target.value) || 0) })}
+                    />
                     <button onClick={() => store.updateCharacter(char.id, { xp: char.xp + 1 })} className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">+</button>
                   </div>
                 </div>

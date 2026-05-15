@@ -21,6 +21,8 @@ function SceneCard({ scene, isActive }: { scene: Scene; isActive: boolean }) {
   const [titleInput, setTitleInput] = useState(scene.title)
   const [editingSetup, setEditingSetup] = useState(false)
   const [setupInput, setSetupInput] = useState(scene.setup)
+  const [editingObjective, setEditingObjective] = useState(false)
+  const [objectiveInput, setObjectiveInput] = useState(scene.objective ?? '')
 
   const saveTitle = () => {
     store.updateScene(scene.id, { title: titleInput.trim() || scene.title })
@@ -110,6 +112,40 @@ function SceneCard({ scene, isActive }: { scene: Scene; isActive: boolean }) {
             )}
           </div>
 
+          {/* Objective */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-stone-600 uppercase tracking-wide">Objective</span>
+              {!editingObjective && (
+                <button onClick={() => { setObjectiveInput(scene.objective ?? ''); setEditingObjective(true) }}
+                  className="text-xs text-stone-600 hover:text-stone-400 flex items-center gap-0.5 touch-manipulation">
+                  <Edit2 size={11} /> Edit
+                </button>
+              )}
+            </div>
+            {editingObjective ? (
+              <div className="space-y-2">
+                <textarea
+                  className="textarea text-sm"
+                  rows={2}
+                  placeholder="What does the hero want to achieve?"
+                  value={objectiveInput}
+                  onChange={(e) => setObjectiveInput(e.target.value)}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => setEditingObjective(false)} className="btn-secondary text-xs py-1 flex-1">Cancel</button>
+                  <button onClick={() => { store.updateScene(scene.id, { objective: objectiveInput }); setEditingObjective(false) }}
+                    className="btn-primary text-xs py-1 flex-1">Save</button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-stone-400 text-sm italic">
+                {scene.objective || <span className="text-stone-600">No objective set.</span>}
+              </p>
+            )}
+          </div>
+
           {/* Notes / Outcome */}
           <div>
             <span className="text-xs text-stone-600 uppercase tracking-wide block mb-1">Notes</span>
@@ -172,6 +208,7 @@ export default function OraclePage() {
   const [newNpc, setNewNpc] = useState('')
   const [newSceneTitle, setNewSceneTitle] = useState('')
   const [newSceneSetup, setNewSceneSetup] = useState('')
+  const [newSceneObjective, setNewSceneObjective] = useState('')
 
   const ask = async () => {
     if (!question.trim()) return
@@ -361,8 +398,9 @@ export default function OraclePage() {
                 value={newSceneTitle}
                 onChange={(e) => setNewSceneTitle(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && newSceneTitle.trim()) {
-                  store.addScene(newSceneTitle.trim(), newSceneSetup.trim())
-                  setNewSceneTitle(''); setNewSceneSetup('')
+                  const scene = store.addScene(newSceneTitle.trim(), newSceneSetup.trim())
+                  if (newSceneObjective.trim()) store.updateScene(scene.id, { objective: newSceneObjective.trim() })
+                  setNewSceneTitle(''); setNewSceneSetup(''); setNewSceneObjective('')
                 }}}
               />
               <textarea
@@ -372,14 +410,24 @@ export default function OraclePage() {
                 value={newSceneSetup}
                 onChange={(e) => setNewSceneSetup(e.target.value)}
               />
+              <input
+                className="input text-sm"
+                placeholder="Objective… (optional)"
+                value={newSceneObjective}
+                onChange={(e) => setNewSceneObjective(e.target.value)}
+              />
               <button
                 className="btn-primary w-full"
                 disabled={!newSceneTitle.trim()}
                 onClick={() => {
                   if (!newSceneTitle.trim()) return
-                  store.addScene(newSceneTitle.trim(), newSceneSetup.trim())
+                  const scene = store.addScene(newSceneTitle.trim(), newSceneSetup.trim())
+                  if (newSceneObjective.trim()) {
+                    store.updateScene(scene.id, { objective: newSceneObjective.trim() })
+                  }
                   setNewSceneTitle('')
                   setNewSceneSetup('')
+                  setNewSceneObjective('')
                 }}
               >
                 Begin Scene
@@ -490,7 +538,19 @@ export default function OraclePage() {
               >
                 {store.chaosFactor}
               </p>
-              <p className="text-stone-500 text-xs mt-1">
+              <div className="flex justify-center gap-1.5 mt-2">
+                {Array.from({ length: 9 }, (_, i) => (
+                  <span
+                    key={i}
+                    className="w-3 h-3 rounded-full inline-block border"
+                    style={i < store.chaosFactor
+                      ? { backgroundColor: `hsl(${30 - store.chaosFactor * 3}, 80%, 50%)`, borderColor: `hsl(${30 - store.chaosFactor * 3}, 80%, 40%)` }
+                      : { backgroundColor: 'transparent', borderColor: '#44403c' }
+                    }
+                  />
+                ))}
+              </div>
+              <p className="text-stone-500 text-xs mt-1.5">
                 {store.chaosFactor <= 3 ? 'Things are under control' :
                  store.chaosFactor <= 6 ? 'Things are getting complicated' :
                  'Chaos reigns — anything can happen!'}

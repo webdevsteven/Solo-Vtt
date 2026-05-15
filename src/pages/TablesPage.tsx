@@ -89,7 +89,7 @@ function CreateTableModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-50" onClick={onClose}>
-      <div className="bg-stone-900 w-full rounded-t-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-sheet bg-stone-900 w-full rounded-t-2xl max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 p-4 border-b border-stone-700">
           <h2 className="text-stone-100 font-bold flex-1">Create Custom Table</h2>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-200">

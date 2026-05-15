@@ -98,7 +98,7 @@ export default function BackupRestore({ onClose, onNewWandererGame }: Props) {
   return (
     <div className="absolute inset-0 bg-black/70 flex items-end z-[60]" onClick={onClose}>
       <div
-        className="bg-stone-900 w-full rounded-t-2xl p-5 space-y-4"
+        className="modal-sheet bg-stone-900 w-full rounded-t-2xl p-5 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">

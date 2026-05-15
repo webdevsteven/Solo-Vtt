@@ -54,6 +54,7 @@ export interface Scene {
   number: number
   title: string
   setup: string
+  objective?: string
   outcome?: string
   chaosFactor: number
   isAlt: boolean
