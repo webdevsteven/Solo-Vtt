@@ -85,6 +85,14 @@ export interface Attribute {
 
 export type FieldType = 'number' | 'resource' | 'text' | 'dots' | 'track'
 
+export interface CharacterSection {
+  id: string
+  title: string
+  collapsed: boolean
+  twoCol: boolean
+  order: number
+}
+
 export interface CharacterField {
   id: string
   name: string
@@ -92,6 +100,7 @@ export interface CharacterField {
   value: number   // number:score | resource:current | dots:rating | track:bitmask
   max: number     // number:max(0=none) | resource:max | dots:count | track:boxes
   text: string    // text type value
+  sectionId?: string
 }
 
 export type SkillType = 'dots' | 'number' | 'checkbox'
@@ -124,6 +133,7 @@ export interface Character {
   hp?: number       // legacy, kept for migration
   maxHp?: number    // legacy, kept for migration
   attributes?: Attribute[]  // legacy, kept for migration
+  sections?: CharacterSection[]
   fields: CharacterField[]
   skills: Skill[]
   inventory: InventoryItem[]

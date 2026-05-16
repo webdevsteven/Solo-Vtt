@@ -4,7 +4,6 @@ import BottomNav from './components/layout/BottomNav'
 import BackupRestore from './components/BackupRestore'
 import WandererSetup from './components/WandererSetup'
 import HomePage from './pages/HomePage'
-import MapPage from './pages/MapPage'
 import OraclePage from './pages/OraclePage'
 import DicePage from './pages/DicePage'
 import CharacterPage from './pages/CharacterPage'
@@ -20,7 +19,6 @@ export default function App() {
         <div className="flex-1 flex flex-col min-h-0">
           <Routes>
             <Route path="/" element={<HomePage onSettingsClick={() => setShowBackup(true)} />} />
-            <Route path="/map" element={<MapPage />} />
             <Route path="/oracle" element={<OraclePage />} />
             <Route path="/dice" element={<DicePage />} />
             <Route path="/character" element={<CharacterPage />} />

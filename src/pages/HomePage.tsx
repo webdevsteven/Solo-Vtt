@@ -3,10 +3,9 @@ import { useCharacterStore } from '../store/characterStore'
 import { useOracleStore } from '../store/oracleStore'
 import { useDiceStore } from '../store/diceStore'
 import { useJournalStore } from '../store/journalStore'
-import { Map, Eye, Dices, User, BookOpen, Table2, Settings } from 'lucide-react'
+import { Eye, Dices, User, BookOpen, Table2, Settings } from 'lucide-react'
 
 const SECTIONS = [
-  { to: '/map',       icon: Map,      label: 'Map',     desc: 'Tactical grid'   },
   { to: '/oracle',    icon: Eye,      label: 'Oracle',  desc: 'Ask the fates'   },
   { to: '/dice',      icon: Dices,    label: 'Dice',    desc: 'Roll dice'       },
   { to: '/character', icon: User,     label: 'Hero',    desc: 'Character sheet' },

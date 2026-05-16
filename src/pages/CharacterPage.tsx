@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useCharacterStore } from '../store/characterStore'
-import type { Skill, InventoryItem, CharacterField, FieldType, SkillType } from '../types'
+import type { Skill, InventoryItem, CharacterField, FieldType, SkillType, CharacterSection } from '../types'
 import { Plus, Trash2, X, Edit2, Check, ChevronDown } from 'lucide-react'
 
 type Tab = 'stats' | 'skills' | 'inventory' | 'notes'
@@ -88,9 +88,173 @@ function FieldWidget({ field, charId }: { field: CharacterField; charId: string 
   return null
 }
 
+// ── Section card ──────────────────────────────────────────────────────────────
+
+function SectionCard({
+  section,
+  fields,
+  charId,
+  onEditField,
+  onAddField,
+}: {
+  section: CharacterSection
+  fields: CharacterField[]
+  charId: string
+  onEditField: (f: CharacterField) => void
+  onAddField: (sectionId: string) => void
+}) {
+  const store = useCharacterStore()
+  const [editingTitle, setEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState(section.title)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
+  const commitTitle = () => {
+    const t = titleDraft.trim()
+    store.updateSection(charId, section.id, { title: t || section.title })
+    setTitleDraft(t || section.title)
+    setEditingTitle(false)
+  }
+
+  const isWide = (f: CharacterField) =>
+    f.type === 'resource' || f.type === 'text' || f.type === 'track'
+
+  return (
+    <div className="card">
+      {/* Header */}
+      <div className="flex items-center gap-1.5 min-w-0">
+        <button
+          onClick={() => store.updateSection(charId, section.id, { collapsed: !section.collapsed })}
+          className="flex-none text-stone-500 touch-manipulation"
+        >
+          <ChevronDown
+            size={14}
+            className={`transition-transform duration-200 ${section.collapsed ? '-rotate-90' : ''}`}
+          />
+        </button>
+
+        {editingTitle ? (
+          <input
+            className="input flex-1 text-sm py-1"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitTitle() }}
+            autoFocus
+          />
+        ) : (
+          <span
+            className="flex-1 text-sm font-semibold text-stone-200 truncate cursor-pointer"
+            onClick={() => store.updateSection(charId, section.id, { collapsed: !section.collapsed })}
+          >
+            {section.title}
+          </span>
+        )}
+
+        {/* 2-col toggle */}
+        <button
+          onClick={() => store.updateSection(charId, section.id, { twoCol: !section.twoCol })}
+          className={`text-[10px] px-1.5 py-0.5 rounded border touch-manipulation flex-none ${
+            section.twoCol
+              ? 'bg-amber-900/40 border-amber-700 text-amber-400'
+              : 'border-stone-700 text-stone-600 hover:text-stone-400'
+          }`}
+          title="Toggle 2-column layout"
+        >
+          2col
+        </button>
+
+        {!editingTitle && (
+          <button
+            onClick={() => { setTitleDraft(section.title); setEditingTitle(true) }}
+            className="p-1 text-stone-600 hover:text-stone-300 flex-none touch-manipulation"
+            title="Rename"
+          >
+            <Edit2 size={12} />
+          </button>
+        )}
+
+        <button
+          onClick={() => onAddField(section.id)}
+          className="p-1 text-stone-600 hover:text-amber-400 flex-none touch-manipulation"
+          title="Add field"
+        >
+          <Plus size={14} />
+        </button>
+
+        {confirmDelete ? (
+          <>
+            <button
+              onClick={() => store.deleteSection(charId, section.id)}
+              className="text-[10px] px-1.5 py-0.5 rounded border border-red-800/60 text-red-400 flex-none touch-manipulation"
+            >
+              Delete
+            </button>
+            <button
+              onClick={() => setConfirmDelete(false)}
+              className="text-[10px] text-stone-500 flex-none touch-manipulation"
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="p-1 text-stone-600 hover:text-red-400 flex-none touch-manipulation"
+          >
+            <Trash2 size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* Body */}
+      {!section.collapsed && (
+        <>
+          {fields.length === 0 ? (
+            <p className="text-stone-600 text-xs text-center py-4 mt-2">
+              No fields — tap + above to add one.
+            </p>
+          ) : (
+            <div className={`mt-3 ${section.twoCol ? 'grid grid-cols-2 gap-2' : 'space-y-2'}`}>
+              {fields.map((field) => (
+                <div
+                  key={field.id}
+                  className={`bg-stone-800 border border-stone-700 rounded-lg px-3 py-2 ${
+                    section.twoCol && isWide(field) ? 'col-span-2' : ''
+                  }`}
+                >
+                  <div className="flex items-start gap-1.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] text-stone-500 mb-1 uppercase tracking-wide truncate">{field.name}</p>
+                      <FieldWidget field={field} charId={charId} />
+                    </div>
+                    <button
+                      onClick={() => onEditField(field)}
+                      className="p-1 text-stone-600 hover:text-stone-300 flex-none touch-manipulation mt-0.5"
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Field modals ──────────────────────────────────────────────────────────────
 
-function AddFieldModal({ charId, onClose }: { charId: string; onClose: () => void }) {
+function AddFieldModal({
+  charId,
+  sectionId,
+  onClose,
+}: {
+  charId: string
+  sectionId?: string
+  onClose: () => void
+}) {
   const store = useCharacterStore()
   const [name, setName] = useState('')
   const [type, setType] = useState<FieldType>('number')
@@ -103,11 +267,11 @@ function AddFieldModal({ charId, onClose }: { charId: string; onClose: () => voi
     if (!name.trim()) return
     const id = crypto.randomUUID()
     let field: CharacterField
-    if (type === 'number')        field = { id, name: name.trim(), type, value: startVal, max: maxVal, text: '' }
-    else if (type === 'resource') field = { id, name: name.trim(), type, value: maxVal, max: maxVal, text: '' }
-    else if (type === 'dots')     field = { id, name: name.trim(), type, value: 0, max: dotCount, text: '' }
-    else if (type === 'track')    field = { id, name: name.trim(), type, value: 0, max: boxCount, text: '' }
-    else                          field = { id, name: name.trim(), type: 'text', value: 0, max: 0, text: '' }
+    if (type === 'number')        field = { id, name: name.trim(), type, value: startVal, max: maxVal, text: '', sectionId }
+    else if (type === 'resource') field = { id, name: name.trim(), type, value: maxVal, max: maxVal, text: '', sectionId }
+    else if (type === 'dots')     field = { id, name: name.trim(), type, value: 0, max: dotCount, text: '', sectionId }
+    else if (type === 'track')    field = { id, name: name.trim(), type, value: 0, max: boxCount, text: '', sectionId }
+    else                          field = { id, name: name.trim(), type: 'text', value: 0, max: 0, text: '', sectionId }
     store.addField(charId, field)
     onClose()
   }
@@ -186,13 +350,27 @@ function AddFieldModal({ charId, onClose }: { charId: string; onClose: () => voi
   )
 }
 
-function EditFieldModal({ field, charId, onClose }: { field: CharacterField; charId: string; onClose: () => void }) {
+function EditFieldModal({
+  field,
+  charId,
+  sections,
+  onClose,
+}: {
+  field: CharacterField
+  charId: string
+  sections: CharacterSection[]
+  onClose: () => void
+}) {
   const store = useCharacterStore()
   const [name, setName] = useState(field.name)
   const [maxVal, setMaxVal] = useState(field.max)
+  const [selectedSectionId, setSelectedSectionId] = useState<string | undefined>(field.sectionId)
 
   const save = () => {
-    const partial: Partial<CharacterField> = { name: name.trim() || field.name }
+    const partial: Partial<CharacterField> = {
+      name: name.trim() || field.name,
+      sectionId: selectedSectionId,
+    }
     if (field.type !== 'text') partial.max = maxVal
     store.updateField(charId, field.id, partial)
     onClose()
@@ -214,6 +392,38 @@ function EditFieldModal({ field, charId, onClose }: { field: CharacterField; cha
         {field.type === 'resource' && <div><label className="section-title block">Max Value</label><input className="input" type="number" min={1} value={maxVal} onChange={(e) => setMaxVal(Number(e.target.value))} /></div>}
         {field.type === 'dots'     && <div><label className="section-title block">Max Dots</label><input className="input" type="number" min={1} max={10} value={maxVal} onChange={(e) => setMaxVal(Number(e.target.value))} /></div>}
         {field.type === 'track'    && <div><label className="section-title block">Number of Boxes</label><input className="input" type="number" min={1} max={20} value={maxVal} onChange={(e) => setMaxVal(Number(e.target.value))} /></div>}
+
+        {sections.length > 0 && (
+          <div>
+            <label className="section-title block">Section</label>
+            <div className="flex flex-wrap gap-1.5">
+              {sections.map((sec) => (
+                <button
+                  key={sec.id}
+                  onClick={() => setSelectedSectionId(sec.id)}
+                  className={`text-xs px-3 py-1.5 rounded-lg border touch-manipulation ${
+                    selectedSectionId === sec.id
+                      ? 'bg-amber-900/40 border-amber-600 text-amber-400'
+                      : 'bg-stone-800 border-stone-700 text-stone-400'
+                  }`}
+                >
+                  {sec.title}
+                </button>
+              ))}
+              <button
+                onClick={() => setSelectedSectionId(undefined)}
+                className={`text-xs px-3 py-1.5 rounded-lg border touch-manipulation ${
+                  selectedSectionId === undefined
+                    ? 'bg-amber-900/40 border-amber-600 text-amber-400'
+                    : 'bg-stone-800 border-stone-700 text-stone-400'
+                }`}
+              >
+                Ungrouped
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
           <button onClick={() => { store.moveField(charId, field.id, 'up'); onClose() }} className="btn-secondary px-3 py-2 text-sm" title="Move up">↑</button>
           <button onClick={() => { store.moveField(charId, field.id, 'down'); onClose() }} className="btn-secondary px-3 py-2 text-sm" title="Move down">↓</button>
@@ -467,19 +677,25 @@ export default function CharacterPage() {
   const [tab, setTab] = useState<Tab>('stats')
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(char.name)
+  const [identityCollapsed, setIdentityCollapsed] = useState(false)
   const [showConditions, setShowConditions] = useState(false)
   const [customCondition, setCustomCondition] = useState('')
   const [showCharList, setShowCharList] = useState(false)
 
   // field modals
   const [showAddField, setShowAddField] = useState(false)
+  const [addFieldSectionId, setAddFieldSectionId] = useState<string | undefined>()
   const [editingField, setEditingField] = useState<CharacterField | null>(null)
+
+  // section form
+  const [addingSection, setAddingSection] = useState(false)
+  const [newSectionTitle, setNewSectionTitle] = useState('')
 
   // skill modals
   const [showAddSkill, setShowAddSkill] = useState(false)
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null)
 
-  // inventory modals
+  // inventory
   const [showAddItem, setShowAddItem] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -489,6 +705,18 @@ export default function CharacterPage() {
     ? primaryResource.value / primaryResource.max : 0
   const resourceColor = resourcePct > 0.5 ? '#22c55e' : resourcePct > 0.25 ? '#f59e0b' : '#ef4444'
 
+  const sections = useMemo(() =>
+    [...(char.sections ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
+    [char.sections],
+  )
+
+  const sectionIdSet = useMemo(() => new Set(sections.map((s) => s.id)), [sections])
+
+  const ungroupedFields = useMemo(() =>
+    (char.fields ?? []).filter((f) => !f.sectionId || !sectionIdSet.has(f.sectionId)),
+    [char.fields, sectionIdSet],
+  )
+
   const itemCategories = useMemo(() => {
     const cats = new Set(char.inventory.map((i) => i.category).filter(Boolean) as string[])
     return Array.from(cats)
@@ -497,6 +725,8 @@ export default function CharacterPage() {
   const filteredInventory = activeCategory
     ? char.inventory.filter((i) => i.category === activeCategory)
     : char.inventory
+
+  const equippedItems = char.inventory.filter((i) => i.equipped)
 
   return (
     <div className="flex flex-col h-full relative">
@@ -640,79 +870,169 @@ export default function CharacterPage() {
 
         {/* ── Stats ── */}
         {tab === 'stats' && (
-          <div className="space-y-4">
-            <div className="card space-y-3">
+          <div className="space-y-3">
+
+            {/* Identity card — collapsible */}
+            <div className="card">
               <div className="flex items-center gap-2">
-                {editingName ? (
-                  <>
-                    <input className="input flex-1 text-sm" value={nameInput} onChange={(e) => setNameInput(e.target.value)} autoFocus />
-                    <button onClick={() => { store.updateCharacter(char.id, { name: nameInput.trim() || char.name }); setEditingName(false) }}
-                      className="p-1.5 text-amber-500"><Check size={16} /></button>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-stone-100 font-semibold flex-1">{char.name}</span>
-                    <button onClick={() => { setNameInput(char.name); setEditingName(true) }} className="p-1 text-stone-500 hover:text-stone-300">
-                      <Edit2 size={14} />
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={() => setIdentityCollapsed((s) => !s)}
+                  className="flex-none text-stone-500 touch-manipulation"
+                >
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 ${identityCollapsed ? '-rotate-90' : ''}`}
+                  />
+                </button>
+                <span
+                  className="flex-1 text-sm font-semibold text-stone-200 cursor-pointer"
+                  onClick={() => setIdentityCollapsed((s) => !s)}
+                >
+                  Identity
+                </span>
               </div>
-              <div>
-                <label className="section-title block">Concept</label>
-                <input className="input text-sm" value={char.concept}
-                  onChange={(e) => store.updateCharacter(char.id, { concept: e.target.value })} placeholder="A lone wanderer…" />
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="section-title block">System</label>
-                  <input className="input text-sm" value={char.system}
-                    onChange={(e) => store.updateCharacter(char.id, { system: e.target.value })} placeholder="OSR, PbtA…" />
-                </div>
-                <div className="flex-1">
-                  <label className="section-title block">XP</label>
+
+              {!identityCollapsed && (
+                <div className="mt-3 space-y-3">
                   <div className="flex items-center gap-2">
-                    <button onClick={() => store.updateCharacter(char.id, { xp: Math.max(0, char.xp - 1) })} className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">−</button>
-                    <input
-                      type="number"
-                      className="input w-16 text-center font-mono font-bold text-amber-400 py-1 px-1"
-                      value={char.xp}
-                      min={0}
-                      onChange={(e) => store.updateCharacter(char.id, { xp: Math.max(0, parseInt(e.target.value) || 0) })}
-                    />
-                    <button onClick={() => store.updateCharacter(char.id, { xp: char.xp + 1 })} className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">+</button>
+                    {editingName ? (
+                      <>
+                        <input className="input flex-1 text-sm" value={nameInput}
+                          onChange={(e) => setNameInput(e.target.value)} autoFocus />
+                        <button onClick={() => { store.updateCharacter(char.id, { name: nameInput.trim() || char.name }); setEditingName(false) }}
+                          className="p-1.5 text-amber-500"><Check size={16} /></button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-stone-100 font-semibold flex-1">{char.name}</span>
+                        <button onClick={() => { setNameInput(char.name); setEditingName(true) }}
+                          className="p-1 text-stone-500 hover:text-stone-300">
+                          <Edit2 size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  <div>
+                    <label className="section-title block">Concept</label>
+                    <input className="input text-sm" value={char.concept}
+                      onChange={(e) => store.updateCharacter(char.id, { concept: e.target.value })}
+                      placeholder="A lone wanderer…" />
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <label className="section-title block">System</label>
+                      <input className="input text-sm" value={char.system}
+                        onChange={(e) => store.updateCharacter(char.id, { system: e.target.value })}
+                        placeholder="OSR, PbtA…" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="section-title block">XP</label>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => store.updateCharacter(char.id, { xp: Math.max(0, char.xp - 1) })}
+                          className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">−</button>
+                        <input
+                          type="number"
+                          className="input w-16 text-center font-mono font-bold text-amber-400 py-1 px-1"
+                          value={char.xp}
+                          min={0}
+                          onChange={(e) => store.updateCharacter(char.id, { xp: Math.max(0, parseInt(e.target.value) || 0) })}
+                        />
+                        <button onClick={() => store.updateCharacter(char.id, { xp: char.xp + 1 })}
+                          className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">+</button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="section-title mb-0">Fields</p>
-                <button onClick={() => setShowAddField(true)} className="text-amber-500 text-sm flex items-center gap-1">
-                  <Plus size={14} /> Add
-                </button>
-              </div>
-              {(char.fields ?? []).length === 0 && (
-                <p className="text-stone-600 text-sm text-center py-8">No fields yet. Add stats, resources, tracks and more.</p>
-              )}
-              <div className="space-y-2">
-                {(char.fields ?? []).map((field) => (
-                  <div key={field.id} className="card py-2 px-3">
-                    <div className="flex items-start gap-2">
+            {/* Section cards */}
+            {sections.map((section) => (
+              <SectionCard
+                key={section.id}
+                section={section}
+                fields={(char.fields ?? []).filter((f) => f.sectionId === section.id)}
+                charId={char.id}
+                onEditField={setEditingField}
+                onAddField={(sid) => { setAddFieldSectionId(sid); setShowAddField(true) }}
+              />
+            ))}
+
+            {/* Ungrouped fields (safety net) */}
+            {ungroupedFields.length > 0 && (
+              <div className="card space-y-2">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="section-title mb-0">Ungrouped</p>
+                  <button
+                    onClick={() => { setAddFieldSectionId(undefined); setShowAddField(true) }}
+                    className="text-stone-600 hover:text-amber-400 touch-manipulation"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+                {ungroupedFields.map((field) => (
+                  <div key={field.id} className="bg-stone-800 border border-stone-700 rounded-lg px-3 py-2">
+                    <div className="flex items-start gap-1.5">
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-stone-500 mb-1.5 uppercase tracking-wide">{field.name}</p>
+                        <p className="text-[10px] text-stone-500 mb-1 uppercase tracking-wide truncate">{field.name}</p>
                         <FieldWidget field={field} charId={char.id} />
                       </div>
                       <button onClick={() => setEditingField(field)}
-                        className="p-1.5 text-stone-600 hover:text-stone-300 flex-none mt-0.5 touch-manipulation">
-                        <Edit2 size={13} />
+                        className="p-1 text-stone-600 hover:text-stone-300 flex-none touch-manipulation mt-0.5">
+                        <Edit2 size={11} />
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
+
+            {/* New section */}
+            {addingSection ? (
+              <div className="card">
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 text-sm"
+                    placeholder="Section name…"
+                    value={newSectionTitle}
+                    onChange={(e) => setNewSectionTitle(e.target.value)}
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newSectionTitle.trim()) {
+                        store.addSection(char.id, newSectionTitle.trim())
+                        setNewSectionTitle('')
+                        setAddingSection(false)
+                      }
+                      if (e.key === 'Escape') { setNewSectionTitle(''); setAddingSection(false) }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      if (newSectionTitle.trim()) store.addSection(char.id, newSectionTitle.trim())
+                      setNewSectionTitle('')
+                      setAddingSection(false)
+                    }}
+                    disabled={!newSectionTitle.trim()}
+                    className="btn-primary text-sm py-2 px-3 disabled:opacity-40"
+                  >
+                    Add
+                  </button>
+                  <button
+                    onClick={() => { setNewSectionTitle(''); setAddingSection(false) }}
+                    className="btn-secondary text-sm py-2 px-2"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setAddingSection(true)}
+                className="flex items-center gap-2 text-stone-500 hover:text-amber-400 text-sm w-full py-2 transition-colors touch-manipulation"
+              >
+                <Plus size={15} /> New Section
+              </button>
+            )}
           </div>
         )}
 
@@ -759,9 +1079,28 @@ export default function CharacterPage() {
               </button>
             </div>
 
+            {/* Equipped summary */}
+            {equippedItems.length > 0 && (
+              <div className="card border-amber-800/40">
+                <p className="section-title mb-2">Equipped</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {equippedItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => store.updateItem(char.id, item.id, { equipped: false })}
+                      className="flex items-center gap-1 text-xs bg-amber-900/30 text-amber-300 border border-amber-800/50 px-2 py-1 rounded-full touch-manipulation"
+                      title="Tap to unequip"
+                    >
+                      {item.name} <X size={10} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Category filter */}
             {itemCategories.length > 0 && (
-              <div className="flex gap-1.5 overflow-x-auto pb-1">
+              <div className="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                 <button onClick={() => setActiveCategory(null)}
                   className={`text-xs px-3 py-1 rounded-full flex-none border transition-colors ${
                     activeCategory === null ? 'bg-amber-900/40 text-amber-400 border-amber-700/60' : 'text-stone-500 border-stone-700'}`}>
@@ -784,45 +1123,63 @@ export default function CharacterPage() {
             )}
 
             <div className="space-y-2">
-              {filteredInventory.map((item) => (
-                <div key={item.id} className={`card ${item.equipped ? 'border-amber-800/50' : ''}`}>
-                  <div className="flex items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-medium ${item.equipped ? 'text-amber-300' : 'text-stone-200'}`}>
-                          {item.name}
-                        </span>
-                        {item.equipped && <span className="text-xs bg-amber-900/40 text-amber-500 px-1.5 py-0.5 rounded">Equipped</span>}
-                        {item.category && (
-                          <span className="text-xs bg-stone-700 text-stone-400 px-1.5 py-0.5 rounded capitalize">{item.category}</span>
-                        )}
+              {filteredInventory.map((item) => {
+                const trueIdx = char.inventory.findIndex((i) => i.id === item.id)
+                return (
+                  <div key={item.id} className={`card ${item.equipped ? 'border-amber-800/50' : ''}`}>
+                    <div className="flex items-start gap-2">
+                      {/* Reorder arrows (only in unfiltered view) */}
+                      {activeCategory === null && (
+                        <div className="flex flex-col gap-0.5 flex-none pt-0.5">
+                          <button
+                            onClick={() => store.reorderItem(char.id, trueIdx, trueIdx - 1)}
+                            disabled={trueIdx === 0}
+                            className="text-stone-700 hover:text-stone-400 disabled:opacity-20 touch-manipulation text-xs leading-none"
+                          >↑</button>
+                          <button
+                            onClick={() => store.reorderItem(char.id, trueIdx, trueIdx + 1)}
+                            disabled={trueIdx === char.inventory.length - 1}
+                            className="text-stone-700 hover:text-stone-400 disabled:opacity-20 touch-manipulation text-xs leading-none"
+                          >↓</button>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-sm font-medium ${item.equipped ? 'text-amber-300' : 'text-stone-200'}`}>
+                            {item.name}
+                          </span>
+                          {item.equipped && <span className="text-xs bg-amber-900/40 text-amber-500 px-1.5 py-0.5 rounded">Equipped</span>}
+                          {item.category && (
+                            <span className="text-xs bg-stone-700 text-stone-400 px-1.5 py-0.5 rounded capitalize">{item.category}</span>
+                          )}
+                        </div>
+                        {item.note && <p className="text-xs text-stone-500 mt-0.5">{item.note}</p>}
                       </div>
-                      {item.note && <p className="text-xs text-stone-500 mt-0.5">{item.note}</p>}
+                      <button onClick={() => setEditingItem(item)}
+                        className="p-1.5 text-stone-600 hover:text-stone-300 flex-none touch-manipulation">
+                        <Edit2 size={13} />
+                      </button>
                     </div>
-                    <button onClick={() => setEditingItem(item)}
-                      className="p-1.5 text-stone-600 hover:text-stone-300 flex-none touch-manipulation">
-                      <Edit2 size={13} />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => store.updateItem(char.id, item.id, { quantity: Math.max(0, item.quantity - 1) })}
-                        className="w-6 h-6 rounded bg-stone-700 text-stone-300 text-sm font-bold touch-manipulation">−</button>
-                      <span className="w-8 text-center font-mono text-sm text-stone-200">{item.quantity}</span>
-                      <button onClick={() => store.updateItem(char.id, item.id, { quantity: item.quantity + 1 })}
-                        className="w-6 h-6 rounded bg-stone-700 text-stone-300 text-sm font-bold touch-manipulation">+</button>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => store.updateItem(char.id, item.id, { quantity: Math.max(0, item.quantity - 1) })}
+                          className="w-6 h-6 rounded bg-stone-700 text-stone-300 text-sm font-bold touch-manipulation">−</button>
+                        <span className="w-8 text-center font-mono text-sm text-stone-200">{item.quantity}</span>
+                        <button onClick={() => store.updateItem(char.id, item.id, { quantity: item.quantity + 1 })}
+                          className="w-6 h-6 rounded bg-stone-700 text-stone-300 text-sm font-bold touch-manipulation">+</button>
+                      </div>
+                      <button onClick={() => store.updateItem(char.id, item.id, { equipped: !item.equipped })}
+                        className={`text-xs px-2 py-1 rounded touch-manipulation ${item.equipped ? 'bg-amber-900/40 text-amber-400' : 'bg-stone-700 text-stone-400'}`}>
+                        {item.equipped ? '⚔ Unequip' : 'Equip'}
+                      </button>
+                      <button onClick={() => store.removeItem(char.id, item.id)}
+                        className="ml-auto text-stone-600 hover:text-red-400 touch-manipulation">
+                        <X size={14} />
+                      </button>
                     </div>
-                    <button onClick={() => store.updateItem(char.id, item.id, { equipped: !item.equipped })}
-                      className={`text-xs px-2 py-1 rounded touch-manipulation ${item.equipped ? 'bg-amber-900/40 text-amber-400' : 'bg-stone-700 text-stone-400'}`}>
-                      {item.equipped ? '⚔ Unequip' : 'Equip'}
-                    </button>
-                    <button onClick={() => store.removeItem(char.id, item.id)}
-                      className="ml-auto text-stone-600 hover:text-red-400 touch-manipulation">
-                      <X size={14} />
-                    </button>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )}
@@ -840,8 +1197,21 @@ export default function CharacterPage() {
       </div>
 
       {/* Modals */}
-      {showAddField  && <AddFieldModal charId={char.id} onClose={() => setShowAddField(false)} />}
-      {editingField  && <EditFieldModal field={editingField} charId={char.id} onClose={() => setEditingField(null)} />}
+      {showAddField && (
+        <AddFieldModal
+          charId={char.id}
+          sectionId={addFieldSectionId}
+          onClose={() => setShowAddField(false)}
+        />
+      )}
+      {editingField && (
+        <EditFieldModal
+          field={editingField}
+          charId={char.id}
+          sections={sections}
+          onClose={() => setEditingField(null)}
+        />
+      )}
       {showAddSkill  && <AddSkillModal charId={char.id} onClose={() => setShowAddSkill(false)} />}
       {editingSkill  && <EditSkillModal skill={editingSkill} charId={char.id} onClose={() => setEditingSkill(null)} />}
       {showAddItem   && (
