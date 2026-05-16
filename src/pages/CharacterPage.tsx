@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import TopBar from '../components/layout/TopBar'
 import { useCharacterStore } from '../store/characterStore'
 import type { Skill, InventoryItem, CharacterField, FieldType, SkillType, CharacterSection } from '../types'
-import { Plus, Trash2, X, Edit2, Check, ChevronDown } from 'lucide-react'
+import { Plus, Trash2, X, Edit2, Check, ChevronDown, ChevronUp } from 'lucide-react'
 
 type Tab = 'stats' | 'skills' | 'inventory' | 'notes'
 
@@ -1140,17 +1140,21 @@ export default function CharacterPage() {
                     <div className="flex items-start gap-2">
                       {/* Reorder arrows (only in unfiltered view) */}
                       {activeCategory === null && (
-                        <div className="flex flex-col gap-0.5 flex-none pt-0.5">
+                        <div className="flex flex-col flex-none self-stretch justify-center gap-0.5">
                           <button
                             onClick={() => store.reorderItem(char.id, trueIdx, trueIdx - 1)}
                             disabled={trueIdx === 0}
-                            className="text-stone-700 hover:text-stone-400 disabled:opacity-20 touch-manipulation text-xs leading-none"
-                          >↑</button>
+                            className="p-1 text-stone-500 hover:text-stone-200 disabled:opacity-20 touch-manipulation"
+                          >
+                            <ChevronUp size={14} />
+                          </button>
                           <button
                             onClick={() => store.reorderItem(char.id, trueIdx, trueIdx + 1)}
                             disabled={trueIdx === char.inventory.length - 1}
-                            className="text-stone-700 hover:text-stone-400 disabled:opacity-20 touch-manipulation text-xs leading-none"
-                          >↓</button>
+                            className="p-1 text-stone-500 hover:text-stone-200 disabled:opacity-20 touch-manipulation"
+                          >
+                            <ChevronDown size={14} />
+                          </button>
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
