@@ -3,7 +3,7 @@ import { useCharacterStore } from '../store/characterStore'
 import { useOracleStore } from '../store/oracleStore'
 import { useDiceStore } from '../store/diceStore'
 import { useJournalStore } from '../store/journalStore'
-import { Map, Eye, Dices, User, BookOpen, Table2 } from 'lucide-react'
+import { Map, Eye, Dices, User, BookOpen, Table2, Settings } from 'lucide-react'
 
 const SECTIONS = [
   { to: '/map',       icon: Map,      label: 'Map',     desc: 'Tactical grid'   },
@@ -14,7 +14,7 @@ const SECTIONS = [
   { to: '/tables',    icon: Table2,   label: 'Tables',  desc: 'Random tables'   },
 ]
 
-export default function HomePage() {
+export default function HomePage({ onSettingsClick }: { onSettingsClick?: () => void }) {
   const char = useCharacterStore().activeCharacter()
   const oracle = useOracleStore()
   const lastRoll = useDiceStore().history[0]
@@ -31,7 +31,16 @@ export default function HomePage() {
     <div className="flex flex-col h-full overflow-y-auto pb-2">
 
       {/* ── Title / hero ─────────────────────────────────────────────────── */}
-      <div className="px-6 pt-10 pb-7 text-center">
+      <div className="relative px-6 pt-10 pb-7 text-center">
+        {onSettingsClick && (
+          <button
+            onClick={onSettingsClick}
+            className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-400 hover:bg-stone-800/60 transition-colors"
+            title="Settings"
+          >
+            <Settings size={16} strokeWidth={1.5} />
+          </button>
+        )}
         <p className="text-stone-600 text-xs tracking-[0.3em] uppercase mb-2">Solo Roleplaying</p>
         <h1
           className="font-display font-bold text-5xl text-amber-400 leading-none"
