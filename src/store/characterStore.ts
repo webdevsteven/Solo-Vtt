@@ -2,6 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Character, CharacterField, CharacterSection, Skill, InventoryItem } from '../types'
 
+const IDENTITY_SECTION: CharacterSection = {
+  id: '__identity__',
+  title: 'Identity',
+  collapsed: false,
+  twoCol: false,
+  order: -1,
+}
+
 const DEFAULT_SECTION: CharacterSection = {
   id: 'default',
   title: 'Stats',
@@ -15,9 +23,12 @@ const BLANK_CHARACTER: Character = {
   name: 'Adventurer',
   concept: 'A lone wanderer',
   system: 'Generic',
-  sections: [{ ...DEFAULT_SECTION }],
+  sections: [{ ...IDENTITY_SECTION }, { ...DEFAULT_SECTION }],
   fields: [
-    { id: 'hp', name: 'HP', type: 'resource', value: 10, max: 10, text: '', sectionId: 'default' },
+    { id: '__concept__', name: 'Concept',  type: 'text',     value: 0,  max: 0,  text: 'A lone wanderer', sectionId: '__identity__' },
+    { id: '__system__',  name: 'System',   type: 'text',     value: 0,  max: 0,  text: 'Generic',         sectionId: '__identity__' },
+    { id: '__xp__',      name: 'XP',       type: 'number',   value: 0,  max: 0,  text: '',                sectionId: '__identity__' },
+    { id: 'hp',          name: 'HP',       type: 'resource', value: 10, max: 10, text: '',                sectionId: 'default'      },
   ],
   skills: [],
   inventory: [],
@@ -80,8 +91,13 @@ export const useCharacterStore = create<CharacterStore>()(
               ...BLANK_CHARACTER,
               id,
               name,
-              sections: [{ ...DEFAULT_SECTION, id: secId }],
-              fields: BLANK_CHARACTER.fields.map((f) => ({ ...f, id: crypto.randomUUID(), sectionId: secId })),
+              sections: [{ ...IDENTITY_SECTION }, { ...DEFAULT_SECTION, id: secId }],
+              fields: [
+                { id: crypto.randomUUID(), name: 'Concept', type: 'text',     value: 0,  max: 0,  text: '',  sectionId: '__identity__' },
+                { id: crypto.randomUUID(), name: 'System',  type: 'text',     value: 0,  max: 0,  text: '',  sectionId: '__identity__' },
+                { id: crypto.randomUUID(), name: 'XP',      type: 'number',   value: 0,  max: 0,  text: '',  sectionId: '__identity__' },
+                { id: crypto.randomUUID(), name: 'HP',      type: 'resource', value: 10, max: 10, text: '',  sectionId: secId          },
+              ] as import('../types').CharacterField[],
             },
           ],
           activeCharacterId: id,
@@ -308,6 +324,17 @@ export const useCharacterStore = create<CharacterStore>()(
           if (sections.length === 0 && fields.length > 0) {
             sections = [{ id: 'default', title: 'Stats', collapsed: false, twoCol: false, order: 0 }]
             fields = fields.map((f: CharacterField) => ({ ...f, sectionId: f.sectionId ?? 'default' }))
+          }
+
+          // Pass 3: create identity section if missing
+          if (!sections.find((s: CharacterSection) => s.id === '__identity__')) {
+            sections = [{ id: '__identity__', title: 'Identity', collapsed: false, twoCol: false, order: -1 }, ...sections]
+            const hasIdentityFields = fields.some((f: CharacterField) => f.sectionId === '__identity__')
+            if (!hasIdentityFields) {
+              if (c.concept) fields.push({ id: crypto.randomUUID(), name: 'Concept', type: 'text',   value: 0, max: 0, text: c.concept ?? '', sectionId: '__identity__' })
+              if (c.system)  fields.push({ id: crypto.randomUUID(), name: 'System',  type: 'text',   value: 0, max: 0, text: c.system ?? '',  sectionId: '__identity__' })
+              if ((c.xp ?? 0) > 0) fields.push({ id: crypto.randomUUID(), name: 'XP', type: 'number', value: c.xp ?? 0, max: 0, text: '', sectionId: '__identity__' })
+            }
           }
 
           return { ...c, fields, sections } as Character

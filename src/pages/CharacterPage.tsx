@@ -705,15 +705,21 @@ export default function CharacterPage() {
     ? primaryResource.value / primaryResource.max : 0
   const resourceColor = resourcePct > 0.5 ? '#22c55e' : resourcePct > 0.25 ? '#f59e0b' : '#ef4444'
 
-  const sections = useMemo(() =>
+  const allSections = useMemo(() =>
     [...(char.sections ?? [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [char.sections],
   )
+  const sections = useMemo(() => allSections.filter((s) => s.id !== '__identity__'), [allSections])
+  const identityFields = useMemo(() =>
+    (char.fields ?? []).filter((f) => f.sectionId === '__identity__'),
+    [char.fields],
+  )
+  const identitySubtitle = identityFields.find((f) => f.name.toLowerCase() === 'concept')?.text || char.concept || ''
 
-  const sectionIdSet = useMemo(() => new Set(sections.map((s) => s.id)), [sections])
+  const sectionIdSet = useMemo(() => new Set(allSections.map((s) => s.id)), [allSections])
 
   const ungroupedFields = useMemo(() =>
-    (char.fields ?? []).filter((f) => !f.sectionId || !sectionIdSet.has(f.sectionId)),
+    (char.fields ?? []).filter((f) => f.sectionId !== '__identity__' && (!f.sectionId || !sectionIdSet.has(f.sectionId))),
     [char.fields, sectionIdSet],
   )
 
@@ -732,7 +738,7 @@ export default function CharacterPage() {
     <div className="flex flex-col h-full relative">
       <TopBar
         title={char.name}
-        subtitle={char.concept || 'Solo Adventurer'}
+        subtitle={identitySubtitle || 'Solo Adventurer'}
         left={
           <button
             onClick={() => setShowCharList((s) => !s)}
@@ -872,9 +878,9 @@ export default function CharacterPage() {
         {tab === 'stats' && (
           <div className="space-y-3">
 
-            {/* Identity card — collapsible */}
+            {/* Identity card — collapsible, fully customizable */}
             <div className="card">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 min-w-0">
                 <button
                   onClick={() => setIdentityCollapsed((s) => !s)}
                   className="flex-none text-stone-500 touch-manipulation"
@@ -890,58 +896,62 @@ export default function CharacterPage() {
                 >
                   Identity
                 </span>
+                <button
+                  onClick={() => { setAddFieldSectionId('__identity__'); setShowAddField(true) }}
+                  className="p-1 text-stone-600 hover:text-amber-400 flex-none touch-manipulation"
+                  title="Add identity field"
+                >
+                  <Plus size={14} />
+                </button>
               </div>
 
               {!identityCollapsed && (
-                <div className="mt-3 space-y-3">
-                  <div className="flex items-center gap-2">
-                    {editingName ? (
-                      <>
-                        <input className="input flex-1 text-sm" value={nameInput}
-                          onChange={(e) => setNameInput(e.target.value)} autoFocus />
-                        <button onClick={() => { store.updateCharacter(char.id, { name: nameInput.trim() || char.name }); setEditingName(false) }}
-                          className="p-1.5 text-amber-500"><Check size={16} /></button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="text-stone-100 font-semibold flex-1">{char.name}</span>
-                        <button onClick={() => { setNameInput(char.name); setEditingName(true) }}
-                          className="p-1 text-stone-500 hover:text-stone-300">
-                          <Edit2 size={14} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  <div>
-                    <label className="section-title block">Concept</label>
-                    <input className="input text-sm" value={char.concept}
-                      onChange={(e) => store.updateCharacter(char.id, { concept: e.target.value })}
-                      placeholder="A lone wanderer…" />
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="flex-1">
-                      <label className="section-title block">System</label>
-                      <input className="input text-sm" value={char.system}
-                        onChange={(e) => store.updateCharacter(char.id, { system: e.target.value })}
-                        placeholder="OSR, PbtA…" />
+                <div className="mt-3 space-y-2">
+                  {/* Name — always present, not a deletable field */}
+                  <div className="bg-stone-800 border border-stone-700 rounded-lg px-3 py-2">
+                    <p className="text-[10px] text-stone-500 mb-1 uppercase tracking-wide">Name</p>
+                    <div className="flex items-center gap-2">
+                      {editingName ? (
+                        <>
+                          <input className="input flex-1 text-sm py-0.5" value={nameInput}
+                            onChange={(e) => setNameInput(e.target.value)} autoFocus
+                            onKeyDown={(e) => { if (e.key === 'Enter') { store.updateCharacter(char.id, { name: nameInput.trim() || char.name }); setEditingName(false) } }} />
+                          <button onClick={() => { store.updateCharacter(char.id, { name: nameInput.trim() || char.name }); setEditingName(false) }}
+                            className="p-1 text-amber-500 touch-manipulation"><Check size={15} /></button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-stone-100 font-semibold flex-1 text-sm">{char.name}</span>
+                          <button onClick={() => { setNameInput(char.name); setEditingName(true) }}
+                            className="p-1 text-stone-600 hover:text-stone-300 touch-manipulation">
+                            <Edit2 size={11} />
+                          </button>
+                        </>
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <label className="section-title block">XP</label>
-                      <div className="flex items-center gap-2">
-                        <button onClick={() => store.updateCharacter(char.id, { xp: Math.max(0, char.xp - 1) })}
-                          className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">−</button>
-                        <input
-                          type="number"
-                          className="input w-16 text-center font-mono font-bold text-amber-400 py-1 px-1"
-                          value={char.xp}
-                          min={0}
-                          onChange={(e) => store.updateCharacter(char.id, { xp: Math.max(0, parseInt(e.target.value) || 0) })}
-                        />
-                        <button onClick={() => store.updateCharacter(char.id, { xp: char.xp + 1 })}
-                          className="w-7 h-7 rounded bg-stone-700 text-stone-200 font-bold">+</button>
+                  </div>
+
+                  {/* Custom identity fields (Concept, System, XP, Race, Class, etc.) */}
+                  {identityFields.map((field) => (
+                    <div key={field.id} className="bg-stone-800 border border-stone-700 rounded-lg px-3 py-2">
+                      <div className="flex items-start gap-1.5">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] text-stone-500 mb-1 uppercase tracking-wide truncate">{field.name}</p>
+                          <FieldWidget field={field} charId={char.id} />
+                        </div>
+                        <button onClick={() => setEditingField(field)}
+                          className="p-1 text-stone-600 hover:text-stone-300 flex-none touch-manipulation mt-0.5">
+                          <Edit2 size={11} />
+                        </button>
                       </div>
                     </div>
-                  </div>
+                  ))}
+
+                  {identityFields.length === 0 && (
+                    <p className="text-stone-600 text-xs text-center py-2">
+                      Tap + above to add fields like Concept, Class, Race, Level…
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -1208,7 +1218,7 @@ export default function CharacterPage() {
         <EditFieldModal
           field={editingField}
           charId={char.id}
-          sections={sections}
+          sections={allSections}
           onClose={() => setEditingField(null)}
         />
       )}

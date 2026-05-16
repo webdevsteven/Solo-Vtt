@@ -23,6 +23,8 @@ export default function HomePage({ onSettingsClick }: { onSettingsClick?: () => 
   const resPct = primaryResource && primaryResource.max > 0
     ? primaryResource.value / primaryResource.max : 1
   const resColor = resPct > 0.5 ? '#22c55e' : resPct > 0.25 ? '#f59e0b' : '#ef4444'
+  const conceptField = (char.fields ?? []).find((f) => f.sectionId === '__identity__' && f.name.toLowerCase() === 'concept')
+  const charSubtitle = conceptField?.text || char.concept || 'Solo Adventurer'
   const currentScene = oracle.scenes.find((s) => s.id === oracle.currentSceneId)
   const recentEntry = journalStore.entries[0]
 
@@ -66,7 +68,7 @@ export default function HomePage({ onSettingsClick }: { onSettingsClick?: () => 
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-stone-100 font-semibold text-sm truncate">{char.name}</p>
-                <p className="text-stone-500 text-xs truncate">{char.concept || char.system || 'Solo Adventurer'}</p>
+                <p className="text-stone-500 text-xs truncate">{charSubtitle}</p>
               </div>
               {primaryResource && (
                 <div className="text-right flex-none">
