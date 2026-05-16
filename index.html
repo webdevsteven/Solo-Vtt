@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BookShelf — Track Your Reading</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #f7f4ef;
+      --surface:    #ffffff;
+      --border:     #e2ddd6;
+      --text:       #2c2822;
+      --muted:      #8a7f72;
+      --accent:     #c84b31;
+      --accent-h:   #a33a23;
+      --read:       #2d7a4f;
+      --want:       #2563a8;
+      --reading:    #a05c00;
+      --radius:     10px;
+      --shadow:     0 2px 8px rgba(0,0,0,.08);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--text);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .logo { font-size: 1.4rem; font-weight: 700; letter-spacing: -.5px; }
+    .logo span { color: var(--accent); }
+    .header-stats { display: flex; gap: 1.2rem; font-size: .82rem; color: #ccc; }
+    .header-stats b { color: #fff; }
+
+    /* ── Layout ── */
+    .container { max-width: 980px; margin: 0 auto; padding: 1.5rem 1rem 4rem; }
+
+    /* ── Add form ── */
+    .add-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1.5rem;
+    }
+    .add-card h2 { font-size: 1rem; margin-bottom: 1rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+    .form-row { display: flex; gap: .75rem; flex-wrap: wrap; }
+    .form-row input, .form-row select {
+      flex: 1 1 160px;
+      padding: .55rem .8rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .95rem;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-row input:focus, .form-row select:focus { border-color: var(--accent); }
+    .form-row input[name="title"] { flex: 2 1 220px; }
+    .btn {
+      padding: .55rem 1.2rem;
+      border: none;
+      border-radius: 6px;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, transform .08s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); }
+
+    /* ── Controls bar ── */
+    .controls {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+    .search-wrap { position: relative; flex: 1 1 200px; }
+    .search-wrap input {
+      width: 100%;
+      padding: .5rem .8rem .5rem 2.2rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .9rem;
+      background: var(--surface);
+      color: var(--text);
+      outline: none;
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-icon { position: absolute; left: .65rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: .9rem; pointer-events: none; }
+    .filter-tabs { display: flex; gap: .35rem; }
+    .tab {
+      padding: .4rem .85rem;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: .85rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: background .12s, color .12s;
+    }
+    .tab.active { background: var(--text); color: #fff; border-color: var(--text); }
+    .sort-select {
+      padding: .4rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .85rem;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      outline: none;
+    }
+
+    /* ── Book grid ── */
+    .book-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .book-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: box-shadow .15s, transform .15s;
+    }
+    .book-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,.12); transform: translateY(-2px); }
+
+    .book-spine {
+      height: 6px;
+    }
+    .spine-read    { background: var(--read); }
+    .spine-reading { background: var(--reading); }
+    .spine-want    { background: var(--want); }
+    .spine-none    { background: var(--border); }
+
+    .book-body { padding: 1rem 1rem .75rem; flex: 1; }
+    .book-title { font-size: 1rem; font-weight: 700; line-height: 1.3; margin-bottom: .25rem; }
+    .book-author { font-size: .85rem; color: var(--muted); margin-bottom: .6rem; }
+    .book-meta { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .6rem; }
+    .badge {
+      font-size: .72rem;
+      font-weight: 600;
+      padding: .2rem .55rem;
+      border-radius: 20px;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .badge-read    { background: #d4edda; color: var(--read); }
+    .badge-reading { background: #fff3cd; color: var(--reading); }
+    .badge-want    { background: #cfe2ff; color: var(--want); }
+    .badge-none    { background: #f0ece6; color: var(--muted); }
+    .badge-genre   { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+    .stars { color: #f0a500; font-size: .95rem; letter-spacing: 1px; }
+    .stars-empty { color: var(--border); }
+
+    .book-notes { font-size: .82rem; color: var(--muted); line-height: 1.5; margin-top: .5rem; font-style: italic; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .book-footer {
+      padding: .6rem 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: .5rem;
+      justify-content: flex-end;
+    }
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      padding: .25rem .4rem;
+      border-radius: 4px;
+      color: var(--muted);
+      transition: background .12s, color .12s;
+    }
+    .icon-btn:hover { background: var(--bg); color: var(--text); }
+    .icon-btn.del:hover { color: var(--accent); }
+
+    /* ── Empty state ── */
+    .empty { text-align: center; padding: 4rem 1rem; color: var(--muted); }
+    .empty-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+    .empty h3 { font-size: 1.15rem; margin-bottom: .5rem; color: var(--text); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h2 { font-size: 1.15rem; margin-bottom: 1.25rem; }
+    .modal-close {
+      position: absolute; top: 1rem; right: 1rem;
+      background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--muted);
+    }
+    .field { margin-bottom: .9rem; }
+    .field label { display: block; font-size: .83rem; font-weight: 600; color: var(--muted); margin-bottom: .3rem; text-transform: uppercase; letter-spacing: .04em; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: .55rem .8rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .95rem;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+    .field textarea { resize: vertical; min-height: 80px; }
+    .star-picker { display: flex; gap: .3rem; font-size: 1.4rem; cursor: pointer; }
+    .star-pick { cursor: pointer; color: var(--border); transition: color .1s; }
+    .star-pick.on { color: #f0a500; }
+    .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+    /* ── Progress bar ── */
+    .progress-wrap { margin-top: .5rem; }
+    .progress-label { font-size: .8rem; color: var(--muted); margin-bottom: .25rem; display: flex; justify-content: space-between; }
+    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--read); border-radius: 3px; transition: width .4s; }
+
+    @media (max-width: 480px) {
+      .form-row { flex-direction: column; }
+      .filter-tabs { flex-wrap: wrap; }
+      .header-stats { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Book<span>Shelf</span></div>
+  <div class="header-stats">
+    <span><b id="stat-total">0</b> books</span>
+    <span><b id="stat-read">0</b> read</span>
+    <span><b id="stat-reading">0</b> reading</span>
+    <span><b id="stat-want">0</b> want to read</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- Add form -->
+  <div class="add-card">
+    <h2>Add a Book</h2>
+    <form id="quick-add" autocomplete="off">
+      <div class="form-row">
+        <input name="title"  placeholder="Title *" required />
+        <input name="author" placeholder="Author" />
+        <select name="status">
+          <option value="want">Want to Read</option>
+          <option value="reading">Currently Reading</option>
+          <option value="read">Read</option>
+        </select>
+        <button type="submit" class="btn btn-primary">+ Add</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="progress-wrap" id="progress-section" style="margin-bottom:1.25rem;display:none">
+    <div class="progress-label">
+      <span>Reading progress</span>
+      <span id="progress-text"></span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <div class="search-wrap">
+      <span class="search-icon">&#128269;</span>
+      <input type="search" id="search" placeholder="Search title or author…" />
+    </div>
+    <div class="filter-tabs" id="filter-tabs">
+      <button class="tab active" data-filter="all">All</button>
+      <button class="tab" data-filter="read">Read</button>
+      <button class="tab" data-filter="reading">Reading</button>
+      <button class="tab" data-filter="want">Want</button>
+    </div>
+    <select class="sort-select" id="sort-select">
+      <option value="added-desc">Newest first</option>
+      <option value="added-asc">Oldest first</option>
+      <option value="title-asc">Title A–Z</option>
+      <option value="title-desc">Title Z–A</option>
+      <option value="rating-desc">Highest rated</option>
+    </select>
+  </div>
+
+  <!-- Book grid -->
+  <div class="book-grid" id="book-grid"></div>
+
+  <!-- Empty state -->
+  <div class="empty" id="empty-state" style="display:none">
+    <div class="empty-icon">&#128218;</div>
+    <h3>No books yet</h3>
+    <p>Add your first book using the form above.</p>
+  </div>
+
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">&#10005;</button>
+    <h2 id="modal-title">Edit Book</h2>
+    <form id="edit-form" autocomplete="off">
+      <input type="hidden" id="edit-id" />
+      <div class="field">
+        <label>Title *</label>
+        <input id="edit-title" required placeholder="Book title" />
+      </div>
+      <div class="field">
+        <label>Author</label>
+        <input id="edit-author" placeholder="Author name" />
+      </div>
+      <div class="field">
+        <label>Genre</label>
+        <input id="edit-genre" placeholder="e.g. Fiction, Science, History…" />
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="edit-status">
+          <option value="want">Want to Read</option>
+          <option value="reading">Currently Reading</option>
+          <option value="read">Read</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Rating</label>
+        <div class="star-picker" id="star-picker">
+          <span class="star-pick" data-v="1">&#9733;</span>
+          <span class="star-pick" data-v="2">&#9733;</span>
+          <span class="star-pick" data-v="3">&#9733;</span>
+          <span class="star-pick" data-v="4">&#9733;</span>
+          <span class="star-pick" data-v="5">&#9733;</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>Notes / Review</label>
+        <textarea id="edit-notes" placeholder="Your thoughts…"></textarea>
+      </div>
+      <div class="field" id="year-field">
+        <label>Year Read</label>
+        <input id="edit-year" type="number" min="1900" max="2100" placeholder="e.g. 2024" />
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="modal-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  /* ── Storage ── */
+  const STORAGE_KEY = 'bookshelf_v1';
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+  }
+
+  function save(books) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
+  }
+
+  /* ── State ── */
+  let books = load();
+  let filterStatus = 'all';
+  let sortKey = 'added-desc';
+  let searchQuery = '';
+  let editRating = 0;
+
+  /* ── Helpers ── */
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+  function statusLabel(s) {
+    return { read: 'Read', reading: 'Reading', want: 'Want to Read' }[s] || s;
+  }
+
+  function renderStars(r) {
+    if (!r) return '';
+    return '<span class="stars">' + '&#9733;'.repeat(r) + '<span class="stars-empty">' + '&#9733;'.repeat(5 - r) + '</span></span>';
+  }
+
+  /* ── Render ── */
+  function getVisible() {
+    let list = [...books];
+
+    if (filterStatus !== 'all') list = list.filter(b => b.status === filterStatus);
+
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(b =>
+        b.title.toLowerCase().includes(q) ||
+        (b.author || '').toLowerCase().includes(q) ||
+        (b.genre || '').toLowerCase().includes(q)
+      );
+    }
+
+    list.sort((a, b) => {
+      switch (sortKey) {
+        case 'added-asc':   return a.added - b.added;
+        case 'added-desc':  return b.added - a.added;
+        case 'title-asc':   return a.title.localeCompare(b.title);
+        case 'title-desc':  return b.title.localeCompare(a.title);
+        case 'rating-desc': return (b.rating || 0) - (a.rating || 0);
+      }
+      return 0;
+    });
+
+    return list;
+  }
+
+  function render() {
+    const visible = getVisible();
+    const grid = document.getElementById('book-grid');
+    const empty = document.getElementById('empty-state');
+
+    // Stats
+    document.getElementById('stat-total').textContent = books.length;
+    document.getElementById('stat-read').textContent = books.filter(b => b.status === 'read').length;
+    document.getElementById('stat-reading').textContent = books.filter(b => b.status === 'reading').length;
+    document.getElementById('stat-want').textContent = books.filter(b => b.status === 'want').length;
+
+    // Progress
+    const total = books.length;
+    const readCount = books.filter(b => b.status === 'read').length;
+    const progressSection = document.getElementById('progress-section');
+    if (total > 0) {
+      progressSection.style.display = '';
+      const pct = Math.round((readCount / total) * 100);
+      document.getElementById('progress-fill').style.width = pct + '%';
+      document.getElementById('progress-text').textContent = readCount + ' / ' + total + ' (' + pct + '%)';
+    } else {
+      progressSection.style.display = 'none';
+    }
+
+    if (visible.length === 0) {
+      grid.innerHTML = '';
+      empty.style.display = '';
+      return;
+    }
+    empty.style.display = 'none';
+
+    grid.innerHTML = visible.map(b => {
+      const spineClass = 'spine-' + (b.status || 'none');
+      const badgeClass = 'badge-' + (b.status || 'none');
+      return `
+        <div class="book-card" data-id="${b.id}">
+          <div class="book-spine ${spineClass}"></div>
+          <div class="book-body">
+            <div class="book-title">${esc(b.title)}</div>
+            <div class="book-author">${b.author ? esc(b.author) : '<span style="opacity:.4">Unknown author</span>'}</div>
+            <div class="book-meta">
+              <span class="badge ${badgeClass}">${statusLabel(b.status)}</span>
+              ${b.genre ? `<span class="badge badge-genre">${esc(b.genre)}</span>` : ''}
+            </div>
+            ${b.rating ? renderStars(b.rating) : ''}
+            ${b.notes ? `<div class="book-notes">${esc(b.notes)}</div>` : ''}
+          </div>
+          <div class="book-footer">
+            ${b.year ? `<span style="font-size:.78rem;color:var(--muted);margin-right:auto;align-self:center">${b.year}</span>` : ''}
+            <button class="icon-btn edit-btn" title="Edit" data-id="${b.id}">&#9998;</button>
+            <button class="icon-btn del del-btn" title="Delete" data-id="${b.id}">&#128465;</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Quick add ── */
+  document.getElementById('quick-add').addEventListener('submit', e => {
+    e.preventDefault();
+    const f = e.target;
+    const title = f.title.value.trim();
+    if (!title) return;
+    books.unshift({ id: uid(), title, author: f.author.value.trim(), status: f.status.value, added: Date.now() });
+    save(books);
+    render();
+    f.reset();
+    f.title.focus();
+  });
+
+  /* ── Filter tabs ── */
+  document.getElementById('filter-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.tab');
+    if (!tab) return;
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    filterStatus = tab.dataset.filter;
+    render();
+  });
+
+  /* ── Sort ── */
+  document.getElementById('sort-select').addEventListener('change', e => {
+    sortKey = e.target.value;
+    render();
+  });
+
+  /* ── Search ── */
+  document.getElementById('search').addEventListener('input', e => {
+    searchQuery = e.target.value.trim();
+    render();
+  });
+
+  /* ── Edit / Delete (event delegation) ── */
+  document.getElementById('book-grid').addEventListener('click', e => {
+    const editBtn = e.target.closest('.edit-btn');
+    const delBtn  = e.target.closest('.del-btn');
+    if (editBtn) openModal(editBtn.dataset.id);
+    if (delBtn)  deleteBook(delBtn.dataset.id);
+  });
+
+  function deleteBook(id) {
+    if (!confirm('Delete this book?')) return;
+    books = books.filter(b => b.id !== id);
+    save(books);
+    render();
+  }
+
+  /* ── Modal ── */
+  function openModal(id) {
+    const book = books.find(b => b.id === id);
+    if (!book) return;
+
+    document.getElementById('edit-id').value      = book.id;
+    document.getElementById('edit-title').value   = book.title;
+    document.getElementById('edit-author').value  = book.author  || '';
+    document.getElementById('edit-genre').value   = book.genre   || '';
+    document.getElementById('edit-status').value  = book.status  || 'want';
+    document.getElementById('edit-notes').value   = book.notes   || '';
+    document.getElementById('edit-year').value    = book.year    || '';
+
+    editRating = book.rating || 0;
+    updateStarUI();
+
+    document.getElementById('modal-overlay').classList.add('open');
+    document.getElementById('edit-title').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+
+  document.getElementById('edit-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const id = document.getElementById('edit-id').value;
+    const idx = books.findIndex(b => b.id === id);
+    if (idx === -1) return;
+
+    books[idx] = {
+      ...books[idx],
+      title:  document.getElementById('edit-title').value.trim(),
+      author: document.getElementById('edit-author').value.trim(),
+      genre:  document.getElementById('edit-genre').value.trim(),
+      status: document.getElementById('edit-status').value,
+      notes:  document.getElementById('edit-notes').value.trim(),
+      year:   document.getElementById('edit-year').value ? parseInt(document.getElementById('edit-year').value) : null,
+      rating: editRating || null,
+    };
+
+    save(books);
+    render();
+    closeModal();
+  });
+
+  /* ── Star picker ── */
+  const picker = document.getElementById('star-picker');
+
+  picker.addEventListener('mouseover', e => {
+    const star = e.target.closest('.star-pick');
+    if (!star) return;
+    highlightStars(parseInt(star.dataset.v));
+  });
+
+  picker.addEventListener('mouseleave', () => updateStarUI());
+
+  picker.addEventListener('click', e => {
+    const star = e.target.closest('.star-pick');
+    if (!star) return;
+    const v = parseInt(star.dataset.v);
+    editRating = editRating === v ? 0 : v;
+    updateStarUI();
+  });
+
+  function highlightStars(n) {
+    document.querySelectorAll('.star-pick').forEach(s => {
+      s.classList.toggle('on', parseInt(s.dataset.v) <= n);
+    });
+  }
+
+  function updateStarUI() { highlightStars(editRating); }
+
+  /* ── Keyboard: close modal on Escape ── */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  /* ── Initial render ── */
+  render();
+</script>
+</body>
+</html>
